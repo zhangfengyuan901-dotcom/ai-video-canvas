@@ -124,11 +124,15 @@ export async function runStoryboardJob(
             hasError = true;
           }
 
+          // 图片生成完成后检查取消
+          if (getJob(jobId)?.status === "cancelled") return;
+
           const finalPanel = db.select().from(storyboardPanels).where(eq(storyboardPanels.id, panelId)).get();
           if (finalPanel) panelRecords.push({ ...finalPanel, locked: !!finalPanel.locked });
         }
 
         // ---- Step 3: 合成 strip + 更新 scene 状态 ----
+        if (getJob(jobId)?.status === "cancelled") return;
         const allReady = panelRecords.every((p) => p.status === "ready");
         if (allReady) {
           const allCurrent = db.select().from(storyboardPanels)

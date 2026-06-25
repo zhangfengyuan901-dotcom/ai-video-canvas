@@ -66,6 +66,10 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
           setJobId(null);
           console.error("Storyboard job failed:", job.error);
           useProjectStore.getState().setGeneratingStoryboard(false);
+        } else if (job.status === "cancelled") {
+          setJobId(null);
+          console.log("Storyboard job was cancelled");
+          useProjectStore.getState().setGeneratingStoryboard(false);
         }
       } catch {
         setJobId(null);
@@ -74,13 +78,6 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
     }, 2000);
     return () => clearInterval(poll);
   }, [jobId, currentProject?.id]);
-
-  // Reset isGenerating when jobId becomes null
-  useEffect(() => {
-    if (!jobId) {
-      loadPanels();
-    }
-  }, [currentProject?.id, sceneId]);
 
   // Generate storyboard for this scene
   async function handleGenerate() {
