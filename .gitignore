@@ -1,0 +1,9 @@
+﻿node_modules/
+dist/
+.env
+phase0/output/
+local-data/
+*.log
+.DS_Store
+Thumbs.db
+*.tsbuildinfo

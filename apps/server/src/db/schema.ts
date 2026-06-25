@@ -1,0 +1,104 @@
+﻿// =========================================================================
+// Drizzle ORM Schema — Phase 4: +video_clips
+// =========================================================================
+
+import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
+
+// ---- projects ----------------------------------------------------------
+
+export const projects = sqliteTable("projects", {
+  id: text("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description"),
+  aspectRatio: text("aspect_ratio").notNull().default("16:9"),
+  resolution: text("resolution").notNull().default("1080p"),
+  defaultSceneDuration: integer("default_scene_duration").notNull().default(8),
+  rootPath: text("root_path").notNull(),
+  styleBibleJson: text("style_bible_json"),
+  createdAt: text("created_at").notNull(),
+ updatedAt: text("updated_at").notNull(),
+});
+
+// ---- scenes ------------------------------------------------------------
+
+export const scenes = sqliteTable("scenes", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  order: integer("order_index").notNull(),
+  title: text("title").notNull(),
+  summary: text("summary").notNull().default(""),
+  scriptText: text("script_text").notNull().default(""),
+  visualDescription: text("visual_description").notNull().default(""),
+  charactersJson: text("characters_json").notNull().default("[]"),
+  location: text("location").notNull().default(""),
+  shotSize: text("shot_size").notNull().default(""),
+  cameraAngle: text("camera_angle").notNull().default(""),
+  cameraMovement: text("camera_movement").notNull().default(""),
+  motionPrompt: text("motion_prompt").notNull().default(""),
+  dialogue: text("dialogue"),
+  audioEffects: text("audio_effects"),
+  duration: integer("duration").notNull().default(8),
+  status: text("status").notNull().default("draft"),
+  locked: integer("locked").notNull().default(0),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// ---- storyboard_panels -------------------------------------------------
+
+export const storyboardPanels = sqliteTable("storyboard_panels", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  sceneId: text("scene_id").notNull(),
+  panelIndex: integer("panel_index").notNull(),
+  role: text("role").notNull(),
+  prompt: text("prompt").notNull(),
+  revisedPrompt: text("revised_prompt"),
+  remoteUrl: text("remote_url"),
+  localPath: text("local_path"),
+  width: integer("width"),
+  height: integer("height"),
+  status: text("status").notNull().default("queued"),
+  locked: integer("locked").notNull().default(0),
+  error: text("error"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
+// ---- video_clips (Phase 4) --------------------------------------------
+
+export const videoClips = sqliteTable("video_clips", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull(),
+  sceneId: text("scene_id").notNull(),
+  order: integer("order_index").notNull(),
+  version: integer("version").notNull().default(1),
+  prompt: text("prompt").notNull().default(""),
+  taskId: text("task_id"),
+  remoteUrl: text("remote_url"),
+ localPath: text("local_path"),
+ inputPanelIdsJson: text("input_panel_ids_json").notNull().default("[]"),
+ duration: integer("duration").notNull().default(8),
+  resolution: text("resolution").notNull().default("720p"),
+  aspectRatio: text("aspect_ratio").notNull().default("16:9"),
+  status: text("status").notNull().default("queued"),
+  error: text("error"),
+  createdAt: text("created_at").notNull(),
+ updatedAt: text("updated_at").notNull(),
+});
+
+ // ---- jobs (Phase 4) -------------------------------------------------
+
+ export const jobs = sqliteTable("jobs", {
+   id: text("id").primaryKey(),
+   projectId: text("project_id").notNull(),
+   type: text("type").notNull(),
+   payloadJson: text("payload_json").notNull().default("{}"),
+   status: text("status").notNull().default("queued"),
+   progress: integer("progress").notNull().default(0),
+   resultJson: text("result_json"),
+   error: text("error"),
+   taskId: text("task_id"),
+   createdAt: text("created_at").notNull(),
+   updatedAt: text("updated_at").notNull(),
+ });

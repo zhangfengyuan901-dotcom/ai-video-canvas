@@ -1,0 +1,51 @@
+﻿// =========================================================================
+// Fastify Server Entry — Phase 4: +video routes
+// =========================================================================
+
+import "./load-env.js";
+import Fastify from "fastify";
+import cors from "@fastify/cors";
+import { projectRoutes } from "./routes/projects.js";
+import { chatRoutes } from "./routes/chat.js";
+import { storyboardRoutes } from "./routes/storyboard.js";
+import { videoRoutes } from "./routes/video.js";
+import { exportRoutes } from "./routes/export.js";
+import { startBackgroundPoller } from "./services/VideoService.js";
+
+const PORT = parseInt(process.env.SERVER_PORT ?? "3001", 10);
+const HOST = process.env.SERVER_HOST ?? "127.0.0.1";
+
+const app = Fastify({ logger: true });
+
+// ---- Plugins -----------------------------------------------------------
+
+await app.register(cors, {
+  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  methods: ["GET", "POST", "PATCH", "DELETE"],
+});
+
+// ---- Routes ------------------------------------------------------------
+
+await app.register(projectRoutes, { prefix: "/api" });
+await app.register(chatRoutes, { prefix: "/api" });
+await app.register(storyboardRoutes, { prefix: "/api" });
+await app.register(videoRoutes, { prefix: "/api" });
+await app.register(exportRoutes, { prefix: "/api" });
+
+// ---- Health check ------------------------------------------------------
+
+app.get("/api/health", async () => ({ status: "ok", timestamp: new Date().toISOString() }));
+
+// ---- Start -------------------------------------------------------------
+
+try {
+  await app.listen({ port: PORT, host: HOST });
+  console.log(`\n🔥 Server running at http://${HOST}:${PORT}`);
+  console.log(`   Health: http://${HOST}:${PORT}/api/health\n`);
+
+  // Start background video poller
+  startBackgroundPoller();
+} catch (err) {
+  app.log.error(err);
+  process.exit(1);
+}

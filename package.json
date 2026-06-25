@@ -1,0 +1,27 @@
+{
+  "name": "ai-video-canvas",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI 视频画布 — 本地运行 AI 视频脚本 / 故事板 / 图生视频画布工具",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
+    "dev:server": "npm run dev -w apps/server",
+    "dev:web": "npm run dev -w apps/web",
+    "db:push": "npm run db:push -w apps/server",
+    "verify:script": "npx tsx phase0/verify-1-gpt-script.ts",
+    "verify:image": "npx tsx phase0/verify-2-image-gen.ts",
+    "verify:video": "npx tsx phase0/verify-3-video-gen.ts"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.0"
+  }
+}
