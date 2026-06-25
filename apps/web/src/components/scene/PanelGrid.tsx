@@ -30,6 +30,26 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
     }
   }, [currentProject?.id, sceneId]);
 
+  // Restore running job on page refresh
+  useEffect(() => {
+    if (!currentProject) return;
+    (async () => {
+      try {
+        const jobs = await get<any[]>(`/projects/${currentProject.id}/jobs`);
+        const runningJob = jobs.find(
+          (j) => j.type === "STORYBOARD_GENERATE" && (j.status === "queued" || j.status === "running"),
+        );
+        if (runningJob && runningJob.id !== jobId) {
+          setJobId(runningJob.id);
+          setJobProgress(runningJob.progress ?? 0);
+          useProjectStore.getState().setGeneratingStoryboard(true);
+        }
+      } catch {
+        // silent
+      }
+    })();
+  }, [currentProject?.id]);
+
   // Poll job status when a job is running
   useEffect(() => {
     if (!jobId || !currentProject) return;
@@ -40,6 +60,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
         setJobProgress(job.progress);
         if (job.status === "success") {
           setJobId(null);
+          useProjectStore.getState().setGeneratingStoryboard(false);
           loadPanels();
         } else if (job.status === "failed") {
           setJobId(null);

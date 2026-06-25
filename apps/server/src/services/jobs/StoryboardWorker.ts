@@ -11,7 +11,7 @@ import { generatePanelPrompts } from "../llm/PanelPromptService.js";
 import { generateAndDownload } from "../api/PackyImageClient.js";
 import { getPanelPath } from "../storage/AssetStorageService.js";
 import { composeStoryboardStrip } from "../storage/StripService.js";
-import { markRunning, markProgress, markSuccess, markFailed, type JobRow } from "./JobService.js";
+import { getJob, markRunning, markProgress, markSuccess, markFailed, type JobRow } from "./JobService.js";
 import type { StyleBible } from "@ai-video-canvas/shared";
 
 export async function runStoryboardJob(
@@ -44,6 +44,10 @@ export async function runStoryboardJob(
     let hasError = false;
 
     for (let si = 0; si < scenesCount; si++) {
+      // 检查任务是否被用户取消
+      if (getJob(jobId)?.status === "cancelled") {
+        return; // 不标记 failed，前端会看到 cancelled 状态
+      }
       const scene = sceneRows[si];
       const baseProgress = si * progressPerScene;
 
@@ -73,6 +77,7 @@ export async function runStoryboardJob(
           .where(eq(storyboardPanels.sceneId, scene.id)).all();
 
         for (const p of prompts) {
+          if (getJob(jobId)?.status === "cancelled") return;
           const existing = existingPanelRecs.find((ep) => ep.panelIndex === p.panelIndex);
           if (existing && existing.locked) {
             panelRecords.push({ ...existing, locked: !!existing.locked });
