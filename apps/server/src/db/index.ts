@@ -54,6 +54,13 @@ try {
 }
 
 try {
+  // 添加 storyboard_panels 的 version 列（如果不存在）
+  sqlite.exec(`ALTER TABLE storyboard_panels ADD COLUMN version INTEGER NOT NULL DEFAULT 1`);
+} catch {
+  // 列已存在，忽略
+}
+
+try {
   // 添加 scenes 的 current_clip_id 列（如果不存在）
   sqlite.exec(`ALTER TABLE scenes ADD COLUMN current_clip_id TEXT`);
 } catch {

@@ -3,17 +3,17 @@
 // =========================================================================
 
 import { FastifyInstance } from "fastify";
-import { v4 as uuid } from "uuid";
-import { eq } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { projects, scenes, storyboardPanels } from "../db/schema.js";
-import { generatePanelPrompts } from "../services/llm/PanelPromptService.js";
-import { generateAndDownload } from "../services/api/PackyImageClient.js";
-import { getPanelPath, getStripPath } from "../services/storage/AssetStorageService.js";
-import { existsSync, readFileSync } from "node:fs";
-import { generateStoryboardSchema } from "@ai-video-canvas/shared";
-import type { StyleBible, PanelRole, PanelStatus } from "@ai-video-canvas/shared";
-import { composeStoryboardStrip, stripExists } from "../services/storage/StripService.js";
+      import { v4 as uuid } from "uuid";
+      import { eq } from "drizzle-orm";
+          import { db } from "../db/index.js";
+          import { projects, scenes, storyboardPanels } from "../db/schema.js";
+          import { generatePanelPrompts } from "../services/llm/PanelPromptService.js";
+          import { generateAndDownload } from "../services/api/PackyImageClient.js";
+          import { getPanelPath, getStripPath } from "../services/storage/AssetStorageService.js";
+          import { existsSync, readFileSync } from "node:fs";
+          import { generateStoryboardSchema } from "@ai-video-canvas/shared";
+          import type { StyleBible, PanelRole, PanelStatus, StoryboardPanel } from "@ai-video-canvas/shared";
+          import { composeStoryboardStrip } from "../services/storage/StripService.js";
 
 export async function storyboardRoutes(app: FastifyInstance) {
   // ---- 1. Generate storyboard panels for scenes ------------------------
@@ -98,37 +98,55 @@ export async function storyboardRoutes(app: FastifyInstance) {
           request.log.info(`Generating panel prompts for scene ${scene.order}: ${scene.title}`);
           const prompts = await generatePanelPrompts(sceneData, styleBible);
 
-          // Step 3: 为每个 panel 生成图片
+          // Step 3: 为每个 panel 生成图片（UPSERT + 版本化文件路径 + 跳过 locked）
           const panelRecords: Array<Record<string, unknown>> = [];
 
-          for (const p of prompts) {
-            const panelId = uuid();
-            const localPath = getPanelPath(project.id, scene.id, p.panelIndex);
+          // 预加载该 scene 现有 panel 记录
+          const existingPanelRecs = db
+            .select()
+            .from(storyboardPanels)
+            .where(eq(storyboardPanels.sceneId, scene.id))
+            .all();
 
-            // 先插入 queued 状态
-            const insertVal = {
-              id: panelId,
-              projectId: project.id,
-              sceneId: scene.id,
-              panelIndex: p.panelIndex,
-              role: p.role,
-              prompt: p.prompt,
-              revisedPrompt: null,
-              remoteUrl: null,
-              localPath,
-              width: null,
-              height: null,
-              status: "generating",
-              locked: 0,
-              error: null,
-              createdAt: now,
-              updatedAt: now,
-            };
-            db.insert(storyboardPanels).values(insertVal).run();
+          for (const p of prompts) {
+            const existing = existingPanelRecs.find((ep) => ep.panelIndex === p.panelIndex);
+
+            // 如果 panel 被 locked，跳过不重生成
+            if (existing && existing.locked) {
+              request.log.info(`Panel ${p.panelIndex} is locked, skipping`);
+              panelRecords.push({ ...existing, locked: !!existing.locked });
+              continue;
+            }
+
+            const version = existing ? existing.version + 1 : 1;
+            const localPath = getPanelPath(project.id, scene.id, p.panelIndex, version);
+            const panelId = existing ? existing.id : uuid();
+
+            if (existing) {
+              db.update(storyboardPanels)
+                .set({
+                  version, localPath, prompt: p.prompt, role: p.role,
+                  status: "generating",
+                  revisedPrompt: null, remoteUrl: null, error: null,
+                  updatedAt: now,
+                })
+                .where(eq(storyboardPanels.id, existing.id))
+                .run();
+            } else {
+              db.insert(storyboardPanels)
+                .values({
+                  id: panelId, projectId: project.id, sceneId: scene.id,
+                  panelIndex: p.panelIndex, role: p.role, prompt: p.prompt,
+                  localPath, version,
+                  status: "generating", locked: 0, error: null,
+                  createdAt: now, updatedAt: now,
+                })
+                .run();
+            }
 
             try {
               // 调用 gpt-image-2 生成并下载
-              request.log.info(`Generating image for panel ${p.panelIndex} (${p.role}) of scene ${scene.order}`);
+              request.log.info(`Generating image for panel ${p.panelIndex} v${version} (${p.role}) of scene ${scene.order}`);
               const result = await generateAndDownload(p.prompt, localPath, aspectRatio);
 
               // 更新为 ready 状态
@@ -143,7 +161,7 @@ export async function storyboardRoutes(app: FastifyInstance) {
                 .run();
             } catch (imgErr) {
               const imgMsg = imgErr instanceof Error ? imgErr.message : "Image generation failed";
-              request.log.error({ err: imgErr, panelId }, `Panel ${p.panelIndex} generation failed`);
+              request.log.error({ err: imgErr, panelId }, `Panel ${p.panelIndex} v${version} generation failed`);
 
               db.update(storyboardPanels)
                 .set({
@@ -168,11 +186,24 @@ export async function storyboardRoutes(app: FastifyInstance) {
           // 更新 scene 状态
           const allReady = panelRecords.every((p) => p.status === "ready");
           if (allReady) {
-            // 合成为三宫格 strip
-            try {
-              await composeStoryboardStrip(project.id, scene.id);
-            } catch (stripErr) {
-              request.log.warn({ err: stripErr, sceneId: scene.id }, "Strip composition failed (non-fatal)");
+            // 合成为三宫格 strip（使用 storyboard_panels.localPath）
+            const allCurrent = db
+              .select()
+              .from(storyboardPanels)
+              .where(eq(storyboardPanels.sceneId, scene.id))
+              .all();
+            const stripPaths = [0, 1, 2]
+              .map((i) => {
+                const panel = allCurrent.find((p) => p.panelIndex === i);
+                return panel?.localPath;
+              })
+              .filter(Boolean) as string[];
+            if (stripPaths.length === 3) {
+              try {
+                await composeStoryboardStrip(project.id, scene.id, stripPaths);
+              } catch (stripErr) {
+                request.log.warn({ err: stripErr, sceneId: scene.id }, "Strip composition failed (non-fatal)");
+              }
             }
           }
           db.update(scenes)
@@ -260,11 +291,11 @@ export async function storyboardRoutes(app: FastifyInstance) {
       }
 
       const aspectRatio = project.aspectRatio as "16:9" | "9:16";
-      const localPath = getPanelPath(project.id, request.params.sceneId, panelIndex);
+      const version = existing.version + 1;
+      const localPath = getPanelPath(project.id, request.params.sceneId, panelIndex, version);
 
-      // 更新为 generating
       db.update(storyboardPanels)
-        .set({ status: "generating", updatedAt: new Date().toISOString() })
+        .set({ version, localPath, status: "generating", updatedAt: new Date().toISOString() })
         .where(eq(storyboardPanels.id, existing.id))
         .run();
 
@@ -306,12 +337,18 @@ export async function storyboardRoutes(app: FastifyInstance) {
         return reply.status(400).send({ success: false, error: "panelIndex must be 0, 1, or 2" });
       }
 
-      const panelPath = getPanelPath(request.params.projectId, request.params.sceneId, panelIndex);
-      if (!existsSync(panelPath)) {
+      const panel = db
+        .select()
+        .from(storyboardPanels)
+        .where(eq(storyboardPanels.sceneId, request.params.sceneId))
+        .all()
+        .find((p) => p.panelIndex === panelIndex);
+
+      if (!panel || !panel.localPath || !existsSync(panel.localPath)) {
         return reply.status(404).send({ success: false, error: "Image not found" });
       }
 
-      return reply.type("image/png").send(readFileSync(panelPath));
+      return reply.type("image/png").send(readFileSync(panel.localPath));
     },
   );
   // ---- 5. Serve storyboard strip image ----------------------------------

@@ -35,9 +35,10 @@ export function ensureVideoDir(projectId: string, sceneId: string): string {
 
 // ---- 路径生成 ---------------------------------------------------------------
 
-export function getPanelPath(projectId: string, sceneId: string, panelIndex: number): string {
+export function getPanelPath(projectId: string, sceneId: string, panelIndex: number, version?: number): string {
   const dir = ensurePanelDir(projectId, sceneId);
-  return resolve(dir, `panel-${panelIndex}.png`);
+  const suffix = version && version > 1 ? `-v${version}` : '';
+  return resolve(dir, `panel-${panelIndex}${suffix}.png`);
 }
 
 export function getStripPath(projectId: string, sceneId: string): string {

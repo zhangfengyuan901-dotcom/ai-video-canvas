@@ -7,7 +7,7 @@ import { v4 as uuid } from "uuid";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { videoClips, scenes, storyboardPanels } from "../db/schema.js";
-import { getPanelPath, getVideoPath, writeVideoCurrentJson } from "./storage/AssetStorageService.js";
+import { getVideoPath, writeVideoCurrentJson } from "./storage/AssetStorageService.js";
 import {
   uploadMultipleBinaries,
   submitVideoTask,
@@ -39,16 +39,27 @@ export async function generateForScene(
     throw new Error("RUNNINGHUB_API_KEY 未配置，请先设置 .env");
   }
 
-  // 检查 panel 图片是否存在
-  const panelPaths = [0, 1, 2].map((i) => getPanelPath(scene.projectId, scene.id, i));
-  const existingPaths = panelPaths.filter((p) => existsSync(p));
-  if (existingPaths.length === 0) {
-    throw new Error(`场景 ${scene.order} 没有可用的 panel 图片，请先生成故事板`);
+  // 从 storyboard_panels.localPath 读取当前版本的 panel 图片路径
+  const panelRows = db
+    .select()
+    .from(storyboardPanels)
+    .where(eq(storyboardPanels.sceneId, scene.id))
+    .all()
+    .filter((p) => p.status === "ready");
+  const panelPaths = [0, 1, 2]
+    .map((i) => {
+      const panel = panelRows.find((p) => p.panelIndex === i);
+      return panel?.localPath;
+    })
+    .filter(Boolean) as string[];
+
+  if (panelPaths.length === 0) {
+    throw new Error(`场景 ${scene.order} 没有可用的 panel 图片，请先生成故事板（本地路径：${JSON.stringify(panelRows.map((r) => r.localPath))}）`);
   }
 
   // 上传 panel 图片到 RunningHub 临时存储（方案 A）
   // 获取 download_url 用于图生视频，比 Base64 更可靠
-  const imageUrls = await uploadMultipleBinaries(existingPaths);
+  const imageUrls = await uploadMultipleBinaries(panelPaths);
 
   // 确定版本号：查找该场景最大现有版本，+1
   const existingClips = db
@@ -62,12 +73,12 @@ export async function generateForScene(
       : 1;
 
   // 收集 input panel IDs
-  const panelRows = db
+  const inputPanelRows = db
     .select()
     .from(storyboardPanels)
     .where(eq(storyboardPanels.sceneId, scene.id))
     .all();
-  const inputPanelIds = panelRows.filter((p) => p.status === "ready").map((p) => p.id);
+  const inputPanelIds = inputPanelRows.filter((p) => p.status === "ready").map((p) => p.id);
 
   // 构建 motion prompt
   const prompt =

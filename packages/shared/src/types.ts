@@ -81,6 +81,7 @@ export interface StoryboardPanel {
   height?: number;
   status: PanelStatus;
   locked: boolean;
+  version?: number;
   error?: string;
   createdAt: string;
   updatedAt: string;

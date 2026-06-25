@@ -61,6 +61,7 @@ export const storyboardPanels = sqliteTable("storyboard_panels", {
   height: integer("height"),
   status: text("status").notNull().default("queued"),
   locked: integer("locked").notNull().default(0),
+  version: integer("version").notNull().default(1),
   error: text("error"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),

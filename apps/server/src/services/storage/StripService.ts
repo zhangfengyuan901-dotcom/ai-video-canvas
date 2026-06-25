@@ -4,21 +4,21 @@
 
 import sharp from "sharp";
 import { existsSync } from "node:fs";
-import { getPanelPath, getStripPath, ensurePanelDir } from "./AssetStorageService.js";
+import { getStripPath, ensurePanelDir } from "./AssetStorageService.js";
 
 const PANEL_WIDTH = 320;
 const PANEL_HEIGHT = 240;
 
 /**
  * 将 scene 的三个 panel 合成为横向三宫格图片
+ * panelPaths 从 storyboard_panels.localPath 读取（DB 中记录的当前版本路径）
  * 返回 strip 本地路径
  */
 export async function composeStoryboardStrip(
   projectId: string,
   sceneId: string,
+  panelPaths: string[],
 ): Promise<string> {
-  const panelPaths = [0, 1, 2].map((i) => getPanelPath(projectId, sceneId, i));
-
   // 检查是否有 panel 文件
   const existing = panelPaths.filter((p) => existsSync(p));
   if (existing.length === 0) {
