@@ -87,19 +87,30 @@ export async function videoRoutes(app: FastifyInstance) {
       return {
         success: true,
         data: {
-          clips: generatedClips.map(normalizeClip),
+          clips: generatedClips.map((c) => annotateClip(c)),
           processedCount: generatedClips.length,
         },
       };
-    },
+      },
   );
 
-  // ---- 2. 获取项目的所有视频 clip -----------------------------------------
+  // ---- 2. 获取项目的所有视频 clip（含 isCurrent 标记）-------------------------
   // GET /api/projects/:projectId/videos
 
   app.get<{ Params: { projectId: string } }>(
     "/projects/:projectId/videos",
     async (request) => {
+      // 加载所有 scene 的 current_clip_id
+      const sceneRows = db
+        .select()
+        .from(scenes)
+        .where(eq(scenes.projectId, request.params.projectId))
+        .all();
+      const currentClipMap: Record<string, string> = {};
+      for (const s of sceneRows) {
+        if (s.currentClipId) currentClipMap[s.id] = s.currentClipId;
+      }
+
       const rows = db
         .select()
         .from(videoClips)
@@ -107,16 +118,25 @@ export async function videoRoutes(app: FastifyInstance) {
         .orderBy(videoClips.order)
         .all();
 
-      return { success: true, data: rows.map(normalizeClip) };
+      return {
+        success: true,
+        data: rows.map((r) => annotateClip(r, currentClipMap[r.sceneId])),
+      };
     },
   );
 
-  // ---- 3. 获取单个场景的视频 clip -----------------------------------------
+  // ---- 3. 获取单个场景的视频 clip（含 isCurrent 标记）-------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/videos
 
   app.get<{ Params: { projectId: string; sceneId: string } }>(
     "/projects/:projectId/scenes/:sceneId/videos",
     async (request) => {
+      const scene = db
+        .select()
+        .from(scenes)
+        .where(eq(scenes.id, request.params.sceneId))
+        .get();
+
       const rows = db
         .select()
         .from(videoClips)
@@ -126,7 +146,10 @@ export async function videoRoutes(app: FastifyInstance) {
         .orderBy(videoClips.version)
         .all();
 
-      return { success: true, data: rows.map(normalizeClip) };
+      return {
+        success: true,
+        data: rows.map((r) => annotateClip(r, scene?.currentClipId ?? undefined)),
+      };
     },
   );
 
@@ -138,10 +161,37 @@ export async function videoRoutes(app: FastifyInstance) {
     async () => {
       // 后台轮询器会自动运行，这个端点提供手动触发
       return { success: true, data: { message: "后台轮询已在运行中" } };
+      },
+  );
+
+  // ---- 5. POST /use-version — 持久化当前版本选择 --------------------------
+
+  app.post<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
+    "/projects/:projectId/scenes/:sceneId/videos/:clipId/use-version",
+    async (request, reply) => {
+      const clip = db
+        .select()
+        .from(videoClips)
+        .where(eq(videoClips.id, request.params.clipId))
+        .get();
+
+      if (!clip) {
+        return reply.status(404).send({ success: false, error: "Clip not found" });
+      }
+      if (clip.sceneId !== request.params.sceneId || clip.projectId !== request.params.projectId) {
+        return reply.status(400).send({ success: false, error: "Clip does not belong to this scene/project" });
+      }
+
+      db.update(scenes)
+        .set({ currentClipId: clip.id, updatedAt: new Date().toISOString() })
+        .where(eq(scenes.id, request.params.sceneId))
+        .run();
+
+      return { success: true, data: { sceneId: request.params.sceneId, clipId: clip.id } };
     },
   );
 
-  // ---- 5. 提供视频文件下载 -----------------------------------------------
+  // ---- 6. 提供视频文件下载 -----------------------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/video
 
   app.get<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
@@ -188,11 +238,12 @@ export async function videoRoutes(app: FastifyInstance) {
   );
 }
 
-// ---- 辅助：clean up clip row to regular object --------------------------
+// ---- 辅助 ----------------------------------------------------------------
 
-function normalizeClip(row: any) {
+function annotateClip(row: any, currentClipIdForScene?: string) {
   return {
     ...row,
     locked: row.locked !== undefined ? !!row.locked : undefined,
+    isCurrent: currentClipIdForScene === row.id,
   };
 }

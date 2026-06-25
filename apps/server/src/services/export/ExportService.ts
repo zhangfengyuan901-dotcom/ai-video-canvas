@@ -50,6 +50,25 @@ export async function exportProjectVideo(projectId: string): Promise<ExportResul
   const missingScenes: string[] = [];
 
   for (const scene of sceneRows) {
+    // 优先使用当前版本（current_clip_id）
+    if (scene.currentClipId) {
+      const currentClip = db
+        .select()
+        .from(videoClips)
+        .where(eq(videoClips.id, scene.currentClipId))
+        .get();
+
+      if (currentClip && currentClip.status === "ready") {
+        if (!currentClip.localPath || !existsSync(currentClip.localPath)) {
+          missingScenes.push(`${scene.title || `Scene ${scene.order}`}（当前版本文件丢失）`);
+          continue;
+        }
+        clipPaths.push(currentClip.localPath);
+        continue;
+      }
+    }
+
+    // 兜底：取最新 ready 版本
     const clips = db
       .select()
       .from(videoClips)
@@ -60,7 +79,7 @@ export async function exportProjectVideo(projectId: string): Promise<ExportResul
 
     const bestClip = clips[0];
     if (!bestClip || !bestClip.localPath || !existsSync(bestClip.localPath)) {
-      missingScenes.push(scene.title || `Scene ${scene.order}`);
+      missingScenes.push(scene.title || `Scene ${scene.order}（无可用版本）`);
       continue;
     }
     clipPaths.push(bestClip.localPath);

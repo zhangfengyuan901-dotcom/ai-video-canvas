@@ -40,6 +40,7 @@ export const scenes = sqliteTable("scenes", {
   duration: integer("duration").notNull().default(8),
   status: text("status").notNull().default("draft"),
   locked: integer("locked").notNull().default(0),
+  currentClipId: text("current_clip_id"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });

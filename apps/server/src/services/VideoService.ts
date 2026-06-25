@@ -170,6 +170,8 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
       await downloadVideo(videoUrl, clip.localPath);
 
       const now = new Date().toISOString();
+
+      // 更新 clip 状态
       db.update(videoClips)
         .set({
           status: "ready",
@@ -181,6 +183,15 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
 
       // 写入 current.json 标记当前版本
       writeVideoCurrentJson(clip.projectId, clip.sceneId, clip.version, clip.localPath);
+
+      // 如果 scene 尚未设置 current_clip_id，自动设为当前 clip
+      const sceneRow = db.select().from(scenes).where(eq(scenes.id, clip.sceneId)).get();
+      if (sceneRow && !sceneRow.currentClipId) {
+        db.update(scenes)
+          .set({ currentClipId: clip.id, updatedAt: new Date().toISOString() })
+          .where(eq(scenes.id, clip.sceneId))
+          .run();
+      }
 
       // 更新 scene 状态
       db.update(scenes)

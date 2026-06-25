@@ -36,6 +36,14 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
     try {
       const data = await get<any[]>(`/projects/${project.id}/videos`);
       useProjectStore.getState().setAllClips(data as any);
+      // 从 isCurrent 标记初始化选中版本（持久化）
+      const currentIds: Record<string, string> = {};
+      for (const clip of data) {
+        if (clip.isCurrent) {
+          currentIds[clip.sceneId] = clip.id;
+        }
+      }
+      setSelectedClipId(currentIds);
     } catch {
       // silent
     }
