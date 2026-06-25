@@ -66,6 +66,17 @@ export async function generateForScene(
     );
   }
 
+  // 校验每张 panel 文件真实存在（panelIndex 0/1/2）
+  for (let i = 0; i < 3; i++) {
+    const panel = panelRows.find((p) => p.panelIndex === i);
+    if (!panel || !panel.localPath || !existsSync(panel.localPath)) {
+      throw new Error(
+        `场景 ${scene.order} (id=${scene.id}) panelIndex=${i} 文件丢失: ${panel?.localPath ?? "(无路径)"}。` +
+        `请重新生成故事板。`
+      );
+    }
+  }
+
   // 上传 panel 图片到 RunningHub 临时存储（方案 A）
   // 获取 download_url 用于图生视频，比 Base64 更可靠
   const imageUrls = await uploadMultipleBinaries(panelPaths);
