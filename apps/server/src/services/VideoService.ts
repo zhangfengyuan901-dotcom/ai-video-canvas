@@ -53,8 +53,17 @@ export async function generateForScene(
     })
     .filter(Boolean) as string[];
 
-  if (panelPaths.length === 0) {
-    throw new Error(`场景 ${scene.order} 没有可用的 panel 图片，请先生成故事板（本地路径：${JSON.stringify(panelRows.map((r) => r.localPath))}）`);
+  // 必须三张 panel（0/1/2）ready 且文件真实存在
+  if (panelPaths.length !== 3) {
+    const missing = [0, 1, 2]
+      .filter((i) => !panelRows.find((p) => p.panelIndex === i))
+      .map((i) => `panelIndex=${i}`);
+    throw new Error(
+      `场景 ${scene.order} (id=${scene.id}) 图生视频要求 panelIndex 0/1/2 三张 ready panel，` +
+      `当前仅 ${panelPaths.length} 张可用。` +
+      (missing.length > 0 ? ` 缺少: ${missing.join(", ")}。` : "") +
+      ` 可用 panel: ${panelRows.map((r) => `[${r.panelIndex}] status=${r.status}`).join("; ")}`
+    );
   }
 
   // 上传 panel 图片到 RunningHub 临时存储（方案 A）

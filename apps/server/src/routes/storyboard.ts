@@ -344,8 +344,14 @@ export async function storyboardRoutes(app: FastifyInstance) {
         .all()
         .find((p) => p.panelIndex === panelIndex);
 
-      if (!panel || !panel.localPath || !existsSync(panel.localPath)) {
-        return reply.status(404).send({ success: false, error: "Image not found" });
+      if (!panel) {
+        return reply.status(404).send({ success: false, error: "Panel not found" });
+      }
+      if (panel.projectId !== request.params.projectId) {
+        return reply.status(404).send({ success: false, error: "Panel not found for this project" });
+      }
+      if (!panel.localPath || !existsSync(panel.localPath)) {
+        return reply.status(404).send({ success: false, error: "Image not found on disk" });
       }
 
       return reply.type("image/png").send(readFileSync(panel.localPath));

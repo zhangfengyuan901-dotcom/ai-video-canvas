@@ -67,4 +67,29 @@ try {
   // 列已存在，忽略
 }
 
+// ---- storyboard_panels 唯一约束 + 清理重复数据 -------------------------
+
+try {
+  // 删除重复记录：每组 (project_id, scene_id, panel_index) 只保留 version 最大的那条
+  sqlite.exec(`
+    DELETE FROM storyboard_panels WHERE id NOT IN (
+      SELECT id FROM (
+        SELECT id, ROW_NUMBER() OVER (
+          PARTITION BY project_id, scene_id, panel_index
+          ORDER BY version DESC
+        ) AS rn FROM storyboard_panels
+      ) WHERE rn = 1
+    )
+  `);
+} catch (e) {
+  console.warn("[DB] storyboard_panels cleanup warning:", e);
+}
+
+try {
+  // 创建唯一索引（避免应用层 UPSERT 并发问题）
+  sqlite.exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_storyboard_panels_unique ON storyboard_panels(project_id, scene_id, panel_index)`);
+} catch (e) {
+  console.warn("[DB] storyboard_panels unique index warning:", e);
+}
+
 export type DbClient = typeof db;
