@@ -12,6 +12,8 @@ interface TimelineItemProps {
   isDragOver: boolean;
   thumbnailUrl: string | null;
   clip: VideoClip | null;
+  allClips?: VideoClip[];
+  onSelectVersion?: (sceneId: string, clipId: string) => void;
   projectId?: string;
   onDragStart: (e: DragEvent, sceneId: string) => void;
   onDragEnd: (e: DragEvent) => void;
@@ -29,6 +31,8 @@ export default function TimelineItem({
   isDragOver,
   thumbnailUrl,
   clip,
+  allClips,
+  onSelectVersion,
   projectId,
   onDragStart,
   onDragEnd,
@@ -60,6 +64,14 @@ export default function TimelineItem({
   function handleGenerateClick(e: React.MouseEvent) {
     e.stopPropagation();
     onGenerateVideo?.(scene.id);
+  }
+
+  function handleVersionSwitch(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!allClips || allClips.length < 2 || !clip) return;
+    const currentIdx = allClips.findIndex((c) => c.id === clip.id);
+    const nextIdx = (currentIdx + 1) % allClips.length;
+    onSelectVersion?.(scene.id, allClips[nextIdx].id);
   }
 
   return (
@@ -191,6 +203,16 @@ export default function TimelineItem({
         <span className="text-[11px] text-zinc-400 truncate leading-none">
           {scene.title || `Scene ${scene.order}`}
         </span>
+        {/* Version indicator for video clips */}
+        {type === "video" && clip && clip.status === "ready" && allClips && allClips.length > 1 && (
+          <button
+            onClick={handleVersionSwitch}
+            title="点击切换版本"
+            className="ml-1 text-[9px] bg-zinc-700 hover:bg-zinc-600 text-zinc-300 px-1 rounded shrink-0 leading-none py-0.5 transition-colors"
+          >
+            v{clip.version}/{allClips.length}
+          </button>
+        )}
         {clip && (
           <span
             className={`ml-auto text-[9px] shrink-0 ${

@@ -24,6 +24,7 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   const isGeneratingVideo = useProjectStore((s) => s.isGeneratingVideo);
   const { post, get } = useApi();
 
+  const [selectedClipId, setSelectedClipId] = useState<Record<string, string>>({});
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -87,7 +88,18 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   function getClip(sceneId: string) {
     const clips = clipsByScene[sceneId];
     if (!clips || clips.length === 0) return null;
+    // 如果用户选择了某个版本，优先显示
+    const overrideId = selectedClipId[sceneId];
+    if (overrideId) {
+      const override = clips.find((c) => c.id === overrideId);
+      if (override) return override;
+    }
+    // 否则显示最新版本
     return clips.reduce((latest, c) => (c.version > latest.version ? c : latest), clips[0]);
+  }
+
+  function handleSelectVersion(sceneId: string, clipId: string) {
+    setSelectedClipId((prev) => ({ ...prev, [sceneId]: clipId }));
   }
 
   // ---- Drag handlers ----------------------------------------------------
@@ -199,6 +211,8 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
               isDragOver={dragOverId === scene.id}
               thumbnailUrl={getThumbnailUrl(scene.id)}
               clip={getClip(scene.id)}
+              allClips={clipsByScene[scene.id]}
+              onSelectVersion={handleSelectVersion}
               projectId={currentProject?.id}
               onDragStart={handleDragStart}
               onDragEnd={handleDragEnd}

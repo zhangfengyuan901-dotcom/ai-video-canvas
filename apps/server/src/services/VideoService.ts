@@ -9,7 +9,7 @@ import { db } from "../db/index.js";
 import { videoClips, scenes, storyboardPanels } from "../db/schema.js";
 import { getPanelPath, getVideoPath, writeVideoCurrentJson } from "./storage/AssetStorageService.js";
 import {
-  fileToDataUri,
+  uploadMultipleBinaries,
   submitVideoTask,
   queryTaskStatus,
   downloadVideo,
@@ -46,8 +46,9 @@ export async function generateForScene(
     throw new Error(`场景 ${scene.order} 没有可用的 panel 图片，请先生成故事板`);
   }
 
-  // 读取 panel 图片 → Base64 Data URI
-  const dataUris = existingPaths.map((p) => fileToDataUri(p));
+  // 上传 panel 图片到 RunningHub 临时存储（方案 A）
+  // 获取 download_url 用于图生视频，比 Base64 更可靠
+  const imageUrls = await uploadMultipleBinaries(existingPaths);
 
   // 确定版本号：查找该场景最大现有版本，+1
   const existingClips = db
@@ -75,7 +76,7 @@ export async function generateForScene(
   // 提交到 RunningHub
   const taskId = await submitVideoTask(
     prompt,
-    dataUris,
+    imageUrls,
     project.aspectRatio,
     project.resolution,
     String(scene.duration),

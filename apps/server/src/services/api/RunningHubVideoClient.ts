@@ -10,6 +10,7 @@ import { Readable } from "node:stream";
 const API_KEY = process.env.RUNNINGHUB_API_KEY ?? "";
 const SUBMIT_URL = "https://www.runninghub.cn/openapi/v2/rhart-video-v3.1-fast/image-to-video";
 const QUERY_URL = "https://www.runninghub.cn/openapi/v2/query";
+const UPLOAD_URL = "https://www.runninghub.cn/openapi/v2/media/upload/binary";
 
 // ---- 类型 ---------------------------------------------------------------
 
@@ -26,6 +27,10 @@ export interface QueryResponse {
   failedReason?: unknown;
 }
 
+export interface UploadResponse {
+  download_url: string;
+}
+
 // ---- 工具：文件 → Base64 Data URI ---------------------------------------
 
 export function fileToDataUri(filePath: string, mimeType = "image/png"): string {
@@ -33,12 +38,50 @@ export function fileToDataUri(filePath: string, mimeType = "image/png"): string 
   const b64 = buffer.toString("base64");
   return `data:${mimeType};base64,${b64}`;
 }
+// ---- 上传图片到 RunningHub 临时存储（方案 A）-------------------------------
+// 推荐方式：上传后拿 download_url 传给图生视频接口，避免 Base64 请求体过大
+
+export async function uploadBinary(filePath: string): Promise<string> {
+  if (!API_KEY) {
+    throw new Error("RUNNINGHUB_API_KEY is not configured in .env");
+  }
+
+  const buffer = readFileSync(filePath);
+
+  const response = await fetch(UPLOAD_URL, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${API_KEY}`,
+      "Content-Type": "application/octet-stream",
+    },
+    body: buffer,
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`RunningHub upload failed (${response.status}): ${body}`);
+  }
+
+  const json = (await response.json()) as UploadResponse;
+
+  if (!json.download_url) {
+    throw new Error(`RunningHub upload returned no download_url: ${JSON.stringify(json)}`);
+  }
+
+  return json.download_url;
+}
+
+// ---- 批量上传多张图片 ----------------------------------------------------
+
+export async function uploadMultipleBinaries(filePaths: string[]): Promise<string[]> {
+  return Promise.all(filePaths.map((p) => uploadBinary(p)));
+}
 
 // ---- 提交图生视频任务 ----------------------------------------------------
 
 export async function submitVideoTask(
   prompt: string,
-  imageDataUris: string[],
+  imageUrls: string[],
   aspectRatio: string = "16:9",
   resolution: string = "720p",
   duration: string = "8",
@@ -56,7 +99,7 @@ export async function submitVideoTask(
     body: JSON.stringify({
       prompt,
       aspectRatio,
-      imageUrls: imageDataUris,
+      imageUrls,
       duration,
       resolution,
     }),
