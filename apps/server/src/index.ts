@@ -9,6 +9,7 @@ import { projectRoutes } from "./routes/projects.js";
 import { chatRoutes } from "./routes/chat.js";
 import { storyboardRoutes } from "./routes/storyboard.js";
 import { videoRoutes } from "./routes/video.js";
+import { jobRoutes } from "./routes/jobs.js";
 import { exportRoutes } from "./routes/export.js";
 import { startBackgroundPoller } from "./services/VideoService.js";
 
@@ -30,6 +31,7 @@ await app.register(projectRoutes, { prefix: "/api" });
 await app.register(chatRoutes, { prefix: "/api" });
 await app.register(storyboardRoutes, { prefix: "/api" });
 await app.register(videoRoutes, { prefix: "/api" });
+await app.register(jobRoutes, { prefix: "/api" });
 await app.register(exportRoutes, { prefix: "/api" });
 
 // ---- Health check ------------------------------------------------------

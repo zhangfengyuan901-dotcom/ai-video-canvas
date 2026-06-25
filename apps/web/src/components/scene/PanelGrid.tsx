@@ -4,7 +4,7 @@
 // =========================================================================
 
 import { useProjectStore } from "../../stores/projectStore";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
 import type { StoryboardPanel } from "@ai-video-canvas/shared";
 
@@ -15,32 +15,65 @@ interface PanelGridProps {
 export default function PanelGrid({ sceneId }: PanelGridProps) {
   const panels = useProjectStore((s) => s.panelsByScene[sceneId] ?? []);
   const panelsLoaded = useProjectStore((s) => !!s.panelsByScene[sceneId]);
-  const isGenerating = useProjectStore((s) => s.isGeneratingStoryboard);
+  const isGeneratingGlob = useProjectStore((s) => s.isGeneratingStoryboard);
   const setPanels = useProjectStore((s) => s.setPanels);
   const currentProject = useProjectStore((s) => s.currentProject);
   const { post, get } = useApi();
 
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobProgress, setJobProgress] = useState<number>(0);
+
   // Auto-load existing panels when scene first selected
   useEffect(() => {
-    if (currentProject && sceneId && !panelsLoaded && !isGenerating) {
+    if (currentProject && sceneId && !panelsLoaded && !isGeneratingGlob) {
+      loadPanels();
+    }
+  }, [currentProject?.id, sceneId]);
+
+  // Poll job status when a job is running
+  useEffect(() => {
+    if (!jobId || !currentProject) return;
+    const projectId = currentProject.id;
+    const poll = setInterval(async () => {
+      try {
+        const job = await get<{ status: string; progress: number; error?: string }>(`/jobs/${jobId}`);
+        setJobProgress(job.progress);
+        if (job.status === "success") {
+          setJobId(null);
+          loadPanels();
+        } else if (job.status === "failed") {
+          setJobId(null);
+          console.error("Storyboard job failed:", job.error);
+          useProjectStore.getState().setGeneratingStoryboard(false);
+        }
+      } catch {
+        setJobId(null);
+        useProjectStore.getState().setGeneratingStoryboard(false);
+      }
+    }, 2000);
+    return () => clearInterval(poll);
+  }, [jobId, currentProject?.id]);
+
+  // Reset isGenerating when jobId becomes null
+  useEffect(() => {
+    if (!jobId) {
       loadPanels();
     }
   }, [currentProject?.id, sceneId]);
 
   // Generate storyboard for this scene
   async function handleGenerate() {
-    if (!currentProject || isGenerating) return;
-    const store = useProjectStore.getState();
-    store.setGeneratingStoryboard(true);
+    if (!currentProject || isGeneratingGlob) return;
+    useProjectStore.getState().setGeneratingStoryboard(true);
+    setJobProgress(0);
     try {
-      const data = await post<{ panels: StoryboardPanel[] }>(
+      const data = await post<{ jobId: string }>(
         `/projects/${currentProject.id}/storyboard/generate`,
         { sceneIds: [sceneId] },
       );
-      setPanels(sceneId, data.panels);
+      setJobId(data.jobId);
     } catch (err) {
       console.error("Storyboard generation failed:", err);
-    } finally {
       useProjectStore.getState().setGeneratingStoryboard(false);
     }
   }
@@ -80,14 +113,14 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
         <div className="flex-1" />
         <button
           onClick={handleGenerate}
-          disabled={isGenerating || !currentProject}
+          disabled={isGeneratingGlob || !currentProject}
           className={`text-xs px-3 py-1.5 rounded font-medium transition-colors ${
-            isGenerating
+            isGeneratingGlob
               ? "bg-amber-600/20 text-amber-400 animate-pulse cursor-not-allowed"
               : "bg-blue-600 hover:bg-blue-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500"
           }`}
         >
-          {isGenerating ? "生成中..." : panels.length > 0 ? "重新生成" : "生成故事板"}
+          {isGeneratingGlob ? `生成中... ${jobProgress}%` : panels.length > 0 ? "重新生成" : "生成故事板"}
         </button>
       </div>
 
@@ -111,7 +144,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
               {!panel && (
                 <div className="h-full flex items-center justify-center">
                   <span className="text-xs text-zinc-600">
-                    {isGenerating ? "生成中..." : "点击「生成故事板」"}
+                    {isGeneratingGlob ? "生成中..." : "点击「生成故事板」"}
                   </span>
                 </div>
               )}
