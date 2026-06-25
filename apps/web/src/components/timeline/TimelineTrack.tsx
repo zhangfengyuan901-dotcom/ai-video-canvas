@@ -25,6 +25,8 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   const { post, get } = useApi();
 
   const [selectedClipId, setSelectedClipId] = useState<Record<string, string>>({});
+  const [videoJobId, setVideoJobId] = useState<string | null>(null);
+  const [videoJobProgress, setVideoJobProgress] = useState<number>(0);
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -63,6 +65,53 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
     return () => clearInterval(id);
   }, [type, currentProject?.id, fetchClips]);
 
+  // ---- Video: poll job when a VIDEO_GENERATE job is running ----------
+
+  useEffect(() => {
+    if (!videoJobId || !currentProject) return;
+    const poll = setInterval(async () => {
+      try {
+        const job = await get<{ status: string; progress: number; error?: string }>(`/jobs/${videoJobId}`);
+        setVideoJobProgress(job.progress);
+        if (job.status === "success") {
+          setVideoJobId(null);
+          useProjectStore.getState().setGeneratingVideo(false);
+          fetchClips();
+        } else if (job.status === "failed") {
+          setVideoJobId(null);
+          console.error("Video job failed:", job.error);
+          useProjectStore.getState().setGeneratingVideo(false);
+        } else if (job.status === "cancelled") {
+          setVideoJobId(null);
+          useProjectStore.getState().setGeneratingVideo(false);
+        }
+      } catch {
+        setVideoJobId(null);
+        useProjectStore.getState().setGeneratingVideo(false);
+      }
+    }, 2000);
+    return () => clearInterval(poll);
+  }, [videoJobId, currentProject?.id, get, fetchClips]);
+
+  // ---- Video: restore running job on page refresh --------------------
+
+  useEffect(() => {
+    if (!currentProject) return;
+    (async () => {
+      try {
+        const jobs = await get<any[]>(`/projects/${currentProject.id}/jobs`);
+        const runningJob = jobs.find(
+          (j) => j.type === "VIDEO_GENERATE" && (j.status === "queued" || j.status === "running"),
+        );
+        if (runningJob && runningJob.id !== videoJobId) {
+          setVideoJobId(runningJob.id);
+          setVideoJobProgress(runningJob.progress ?? 0);
+          useProjectStore.getState().setGeneratingVideo(true);
+        }
+      } catch { /* silent */ }
+    })();
+  }, [currentProject?.id, videoJobId, get]);
+
   // ---- Video: generate --------------------------------------------------
 
   const handleGenerateVideo = useCallback(
@@ -70,18 +119,17 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
       const project = useProjectStore.getState().currentProject;
       if (!project || useProjectStore.getState().isGeneratingVideo) return;
       useProjectStore.getState().setGeneratingVideo(true);
+      setVideoJobProgress(0);
       try {
-        const ids =
-          sceneIds ?? useProjectStore.getState().scenes.map((s) => s.id);
-        await post(`/projects/${project.id}/videos/generate`, { sceneIds: ids });
-        setTimeout(fetchClips, 2000);
+        const ids = sceneIds ?? useProjectStore.getState().scenes.map((s) => s.id);
+        const data = await post<{ jobId: string }>(`/projects/${project.id}/videos/generate`, { sceneIds: ids });
+        setVideoJobId(data.jobId);
       } catch (err) {
         console.error("Video generation failed:", err);
-      } finally {
         useProjectStore.getState().setGeneratingVideo(false);
       }
     },
-    [post, fetchClips],
+    [post],
   );
 
   // ---- Helpers ----------------------------------------------------------
@@ -207,6 +255,7 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
             : undefined
         }
         isGenerating={isGeneratingVideo}
+        progress={videoJobProgress}
       />
       <div className="flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2">
         <div className="flex gap-2 h-full items-start pt-2 min-w-min">
@@ -251,12 +300,14 @@ function TrackHeader({
   type,
   onGenerateAll,
   isGenerating,
+  progress,
 }: {
   label: string;
   count: number;
   type: "storyboard" | "video";
   onGenerateAll?: () => void;
   isGenerating?: boolean;
+  progress?: number;
 }) {
   const labelCN = type === "video" ? "text-blue-400" : "text-zinc-500";
 
@@ -280,7 +331,7 @@ function TrackHeader({
               : "bg-blue-600 hover:bg-blue-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500"
           }`}
         >
-          {isGenerating ? "生成中..." : "生成全部视频"}
+          {isGenerating ? `生成中... ${progress ?? 0}%` : "生成全部视频"}
         </button>
       )}
     </div>

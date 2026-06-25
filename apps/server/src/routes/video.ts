@@ -7,9 +7,9 @@ import { createReadStream, existsSync, statSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { videoClips, scenes, projects } from "../db/schema.js";
-import { generateForScene, startBackgroundPoller } from "../services/VideoService.js";
 import { hasApiKey } from "../services/api/RunningHubVideoClient.js";
-import type { ClipRow } from "../services/VideoService.js";
+import { createJob } from "../services/jobs/JobService.js";
+import { startVideoWorker } from "../services/jobs/VideoWorker.js";
 
 export async function videoRoutes(app: FastifyInstance) {
   // ---- 0. 检查 API Key 状态 ---------------------------------------------
@@ -43,55 +43,18 @@ export async function videoRoutes(app: FastifyInstance) {
       }
 
       const body = (request.body ?? {}) as { sceneIds?: string[] };
-      const sceneIds = body.sceneIds;
 
-      let sceneRows = db
-        .select()
-        .from(scenes)
-        .where(eq(scenes.projectId, project.id))
-        .orderBy(scenes.order)
-        .all();
-
-      if (sceneIds && sceneIds.length > 0) {
-        sceneRows = sceneRows.filter((s) => sceneIds.includes(s.id));
-      }
-
-      if (sceneRows.length === 0) {
-        return reply.status(400).send({ success: false, error: "没有找到要处理的场景" });
-      }
-
-      const generatedClips: ClipRow[] = [];
-
-      for (const scene of sceneRows) {
-        try {
-          const clip = await generateForScene({
-              id: scene.id,
-              projectId: scene.projectId,
-              order: scene.order,
-              title: scene.title,
-              motionPrompt: scene.motionPrompt,
-              duration: scene.duration,
-            }, { aspectRatio: project.aspectRatio, resolution: project.resolution });
-
-          generatedClips.push(clip);
-        } catch (err) {
-          const msg = err instanceof Error ? err.message : "生成失败";
-          request.log.error({ err, sceneId: scene.id }, `Video generation failed for scene ${scene.order}`);
-          // 继续处理下一个场景
-        }
-      }
-
-      // 启动后台轮询（如果尚未启动）
-      startBackgroundPoller();
+      // 创建后台视频任务，立即返回 jobId
+      const job = createJob(request.params.projectId, "VIDEO_GENERATE", {
+        sceneIds: body.sceneIds ?? undefined,
+      });
+      startVideoWorker(job.id, request.params.projectId, body.sceneIds);
 
       return {
         success: true,
-        data: {
-          clips: generatedClips.map((c) => annotateClip(c)),
-          processedCount: generatedClips.length,
-        },
+        data: { jobId: job.id, status: job.status },
       };
-      },
+    },
   );
 
   // ---- 2. 获取项目的所有视频 clip（含 isCurrent 标记）-------------------------
