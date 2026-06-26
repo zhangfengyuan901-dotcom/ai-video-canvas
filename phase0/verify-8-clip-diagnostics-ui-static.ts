@@ -1,9 +1,9 @@
 // =========================================================================
 // verify-8-clip-diagnostics-ui-static.ts
 // =========================================================================
-// 静态验证脚本：检查前端关键文件是否存在 mojibake 乱码，
-// 并确认 diagnostics 组件通过共享 hook 正常接入诊断功能。
-// 不需要启动 server，不需要 API Key。
+// Static verification script: Checkfrontend key files for mojibake mojibake mojibake, 
+// and confirm diagnostics components are properly wired via shared hooks.
+// No server startup or API key required.
 // =========================================================================
 
 import { readFileSync, existsSync } from "node:fs";
@@ -19,7 +19,7 @@ function read(file) {
 
 var ok = true;
 
-// ---- 检查 1：无 mojibake 乱码 ------------------------------------------
+// ---- Check 1: No  mojibake mojibake ------------------------------------------
 
 var files = [
   "apps/web/src/components/scene/SceneVideoPanel.tsx",
@@ -41,7 +41,7 @@ for (var file of files) {
 }
 if (ok) console.log("[PASS] No mojibake patterns found");
 
-// ---- 检查 2：ClipDiagnosticsPanel 使用共享 hook -------------------------
+// ---- Check 2: ClipDiagnosticsPanel usesshared hook -------------------------
 
 var panelContent = read("apps/web/src/components/scene/ClipDiagnosticsPanel.tsx");
 var panelChecks = ["useClipDiagnosticsDetail", "onOpenDrawer"];
@@ -49,7 +49,7 @@ for (var pc of panelChecks) {
   if (!panelContent.includes(pc)) { console.error("[FAIL] ClipDiagnosticsPanel missing:", pc); ok = false; }
 }
 
-// ---- 检查 3：ClipDiagnosticsDrawer 正确接入 -------------------------------
+// ---- Check 3: ClipDiagnosticsDrawer correctly wired -------------------------------
 
 var drawerContent = read("apps/web/src/components/scene/ClipDiagnosticsDrawer.tsx");
 var drawerChecks = ["useClipDiagnosticsDetail", "DiagnosticsCopyButton", "buildRunningHubRetryGuidance"];
@@ -57,7 +57,7 @@ for (var dc of drawerChecks) {
   if (!drawerContent.includes(dc)) { console.error("[FAIL] ClipDiagnosticsDrawer missing:", dc); ok = false; }
 }
 
-// ---- 检查 4：Hook 引用 detail types -------------------------------------
+// ---- Check 4: Hook references detail types -------------------------------------
 
 var hookContent = read("apps/web/src/hooks/useClipDiagnosticsDetail.ts");
 var hookChecks = ["VideoClipDiagnosticsDetail", "/diagnostics"];
@@ -66,13 +66,13 @@ for (var hc of hookChecks) {
 }
 if (ok) console.log("[PASS] All diagnostics integration checks passed");
 
-// ---- 检查 5：useVideoClips 无 c: any 遗留 --------------------------------
+// ---- Check 5: useVideoClips No  c: any remnant --------------------------------
 
 var hook2Content = read("apps/web/src/hooks/useVideoClips.ts");
 if (hook2Content.includes("c: any")) { console.error("[FAIL] useVideoClips.ts still has c: any"); ok = false; }
 else console.log("[PASS] useVideoClips.ts has no any-type cast");
 
-// ---- 总结 ---------------------------------------------------------------
+// ---- Summary ---------------------------------------------------------------
 
 if (!ok) { console.error("\n[FAIL] Static verification failed"); process.exit(1); }
 console.log("\n[PASS] Clip diagnostics UI static checks passed");

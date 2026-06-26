@@ -1,6 +1,6 @@
 // =========================================================================
-// SceneVideoPanel — 单个镜头的视频版本区
-// 展示当前视频、生成视频、切换版本
+// SceneVideoPanel — Individual scene video version panel
+// Display current video, generate video, switch versions
 // =========================================================================
 
 import { useState, useEffect } from "react";
@@ -68,7 +68,7 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
         body: JSON.stringify({ sceneIds: [sceneId] }),
       });
       var json = await res.json();
-      if (!json.success) throw new Error(json.error ?? "生成视频失败");
+      if (!json.success) throw new Error(json.error ?? "Generatefailed");
       setLocalJobId(json.data.jobId);
     } catch (err) {
       console.error("Video generation failed:", err);
@@ -115,28 +115,28 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-zinc-400">视频版本</span>
+        <span className="text-xs font-medium text-zinc-400">Video</span>
         <div className="flex-1" />
         {currentClip && (
           <button
             onClick={function (e) { e.stopPropagation(); setDiagnosticsDrawerOpen(true); }}
             className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
           >
-            排障详情
+            Troubleshoot
           </button>
         )}
         <button
           onClick={function (e) { e.stopPropagation(); fetchClips(); }}
           className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
         >
-          刷新
+          Refresh
         </button>
         <button
           onClick={function (e) { e.stopPropagation(); handleGenerate(); }}
           disabled={isGeneratingVideo || !currentProject}
           className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
         >
-          {isGeneratingVideo ? `生成中... ${localJobProgress}%` : currentClip ? "重新生成" : "生成视频"}
+          {isGeneratingVideo ? `Generating... ${localJobProgress}%` : currentClip ? "Regenerate" : "Generate"}
         </button>
       </div>
 
@@ -151,13 +151,13 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
             onClick={function (e) { e.stopPropagation(); }}
           />
           <div className="flex items-center gap-2 mt-1.5">
-            <span className="text-[10px] text-zinc-500">当前版本 v{currentClip.version}</span>
+            <span className="text-[10px] text-zinc-500">v{currentClip.version}</span>
             {allClips.filter(function (c) { return c.status === "ready"; }).length > 1 && (
               <button
                 onClick={function (e) { e.stopPropagation(); handleSwitchVersion(); }}
                 className="text-[10px] bg-zinc-700 hover:bg-zinc-600 text-zinc-300 px-1.5 py-0.5 rounded transition-colors"
               >
-                切换版本
+                Switch
               </button>
             )}
             <span className="text-[10px] text-zinc-600 ml-auto">{currentClip.duration}s</span>
@@ -167,7 +167,7 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
       ) : currentClip && currentClip.status === "running" ? (
         <div>
           <div className="flex items-center justify-center py-8">
-            <span className="text-xs text-blue-400 animate-pulse">视频生成中...</span>
+            <span className="text-xs text-blue-400 animate-pulse">videoGenerating...</span>
           </div>
           <ClipDiagnosticsPanel clip={currentClip} onOpenDrawer={function () { setDiagnosticsDrawerOpen(true); }} />
         </div>
@@ -175,14 +175,14 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
         <div>
           <div className="flex items-center justify-center py-8">
             <span className="text-xs text-red-400">
-              视频生成失败: {currentClip.error ?? currentClip.diagnostics?.errorMessage ?? "未知错误"}
+              Failed: {currentClip.error ?? currentClip.diagnostics?.errorMessage ?? "Unknown error"}
             </span>
           </div>
           <ClipDiagnosticsPanel clip={currentClip} onOpenDrawer={function () { setDiagnosticsDrawerOpen(true); }} />
         </div>
       ) : (
         <div className="flex items-center justify-center py-8">
-          <span className="text-xs text-zinc-600">还没有视频，先生成该镜头视频</span>
+          <span className="text-xs text-zinc-600">No video yet. Generate for this scene first.</span>
         </div>
       )}
 

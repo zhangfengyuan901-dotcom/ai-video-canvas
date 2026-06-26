@@ -1,7 +1,7 @@
 // =========================================================================
-// ClipDiagnosticsDrawer — 右侧诊断抽屉
-// 完整展示 RunningHub 诊断信息，包括 retry guidance、复制按钮、
-// usage、results、failedReason、promptTips 等。
+// ClipDiagnosticsDrawer — Right-side diagnostics drawer
+// Full RunningHub diagnostics display, including retry guidance, copy buttons,
+// usage, results, failedReason, promptTips, etc.
 // =========================================================================
 
 import { useEffect } from "react";
@@ -66,7 +66,7 @@ export default function ClipDiagnosticsDrawer({
         type="button"
         className="absolute inset-0 bg-black/40"
         onClick={function (e) { e.stopPropagation(); onClose(); }}
-        aria-label="关闭诊断抽屉遮罩"
+        aria-label="Closediagnostics drawer overlay"
       />
       <aside
         className="relative z-10 h-full w-[420px] max-w-[92vw] overflow-y-auto border-l border-zinc-800 bg-zinc-950 shadow-2xl"
@@ -76,7 +76,7 @@ export default function ClipDiagnosticsDrawer({
         <div className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950 p-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-medium text-zinc-200">RunningHub 诊断详情</h2>
+              <h2 className="text-sm font-medium text-zinc-200">RunningHub Diagnostics</h2>
               <p className="text-[10px] text-zinc-500 mt-0.5">
                 Clip v{clip.version} · {clip.status}
               </p>
@@ -86,7 +86,7 @@ export default function ClipDiagnosticsDrawer({
               onClick={function (e) { e.stopPropagation(); onClose(); }}
               className="text-[11px] text-zinc-500 hover:text-zinc-300 px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500"
             >
-              关闭
+              Close
             </button>
           </div>
           <button
@@ -95,7 +95,7 @@ export default function ClipDiagnosticsDrawer({
             disabled={loading}
             className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 disabled:text-zinc-600"
           >
-            {loading ? "正在刷新..." : "刷新诊断"}
+            {loading ? "Refreshing..." : "Refresh"}
           </button>
         </div>
 
@@ -121,18 +121,18 @@ export default function ClipDiagnosticsDrawer({
                 disabled={isRegenerating}
                 className="mt-2 text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:bg-zinc-700 disabled:text-zinc-500"
               >
-                {isRegenerating ? "重试提交中..." : "创建重试版本"}
+                {isRegenerating ? "Submitting retry..." : "Create retry"}
               </button>
             )}
           </div>
 
           {/* Loading / Error */}
-          {loading && <div className="text-[10px] text-zinc-600">正在加载完整诊断...</div>}
-          {detailError && <div className="text-[10px] text-yellow-500">诊断详情加载失败: {detailError}（显示摘要）</div>}
-          {!loaded && !loading && !detailError && <div className="text-[10px] text-zinc-600">点击「加载详情」获取完整诊断</div>}
+          {loading && <div className="text-[10px] text-zinc-600">Loading full diagnostics...</div>}
+          {detailError && <div className="text-[10px] text-yellow-500">Diagnostics load failed: {detailError} (showing summary)</div>}
+          {!loaded && !loading && !detailError && <div className="text-[10px] text-zinc-600">Click "Load details" for full diagnostics</div>}
 
           {/* Summary Cards */}
-          <Section title="概览">
+          <Section title="Overview">
             <DiagRow label="RH Status" value={d?.status ?? clip.status} />
             <DiagRow label="Clip Status" value={clip.status} />
             <DiagRow label="Output Node" value={d?.outputNodeId} />
@@ -144,13 +144,13 @@ export default function ClipDiagnosticsDrawer({
           </Section>
 
           {/* Copy Buttons */}
-          <Section title="复制">
+          <Section title="Copy">
             <div className="flex flex-wrap gap-1.5">
-              <DiagnosticsCopyButton label="复制 taskId" value={clip.taskId} />
-              <DiagnosticsCopyButton label="复制错误摘要" value={errorSummary} />
-              <DiagnosticsCopyButton label="复制 failedReason" value={failedReasonFormatted.pretty} />
-              <DiagnosticsCopyButton label="复制 promptTips" value={promptTipsFormatted.pretty} />
-              <DiagnosticsCopyButton label="复制完整诊断" value={fullJson} />
+              <DiagnosticsCopyButton label="Copy taskId" value={clip.taskId} />
+              <DiagnosticsCopyButton label="Copyerror summary" value={errorSummary} />
+              <DiagnosticsCopyButton label="Copy failedReason" value={failedReasonFormatted.pretty} />
+              <DiagnosticsCopyButton label="Copy promptTips" value={promptTipsFormatted.pretty} />
+              <DiagnosticsCopyButton label="Copyfull diagnostics" value={fullJson} />
             </div>
           </Section>
 
