@@ -284,7 +284,9 @@ async function main() {
 
   console.log("");
 
-  const allPassed = keyOk && urlOk && normOk && nodeOk && submitOk;
+  const allPassed = VERIFY_AI_APP
+    ? keyOk && urlOk && normOk && nodeOk && submitOk
+    : urlOk && normOk && nodeOk && submitOk;
   if (allPassed) {
     console.log("  [verify] ✓ 全部检查通过");
   } else {
@@ -299,3 +301,4 @@ main().catch((err) => {
   console.error("  [verify] Fatal:", err);
   process.exit(1);
 });
+
