@@ -1,3 +1,156 @@
+// =========================================================================
+// VideoService — 视频生成编排 + 后台轮询
+// 多版本支持：每次生成创建新纪录，保留历史版本
+// =========================================================================
+
+import { v4 as uuid } from "uuid";
+import { eq, and } from "drizzle-orm";
+import { db } from "../db/index.js";
+import { videoClips, scenes, storyboardPanels, projects } from "../db/schema.js";
+import { getVideoPath, writeVideoCurrentJson } from "./storage/AssetStorageService.js";
+import {
+  uploadMultipleBinaries,
+  submitVideoTask,
+  queryTaskStatus,
+  downloadVideo,
+  hasApiKey,
+} from "./api/RunningHubVideoClient.js";
+import { existsSync } from "node:fs";
+import {
+  buildRunningHubDiagnostics,
+  pickPrimaryRunningHubResult,
+} from "./video/RunningHubDiagnosticsService.js";
+import type { VideoClip } from "@ai-video-canvas/shared";
+
+// ---- 类型 ---------------------------------------------------------------
+
+export type ClipRow = typeof videoClips.$inferSelect;
+
+// ---- 为单个场景提交视频生成 ------------------------------------------------
+
+export async function generateForScene(
+  scene: {
+    id: string;
+    projectId: string;
+    order: number;
+    title: string;
+    motionPrompt: string;
+    duration: number;
+  },
+  project: { aspectRatio: string; resolution: string },
+  options: {
+    retryOfClipId?: string;
+    retryReason?: string;
+  } = {},
+): Promise<ClipRow> {
+  if (!hasApiKey()) {
+    throw new Error("RUNNINGHUB_API_KEY 未配置，请先设置 .env");
+  }
+
+  // 从 storyboard_panels.localPath 读取当前版本的 panel 图片路径
+  const panelRows = db
+    .select()
+    .from(storyboardPanels)
+    .where(eq(storyboardPanels.sceneId, scene.id))
+    .all()
+    .filter((p) => p.status === "ready");
+  const panelPaths = [0, 1, 2]
+    .map((i) => {
+      const panel = panelRows.find((p) => p.panelIndex === i);
+      return panel?.localPath;
+    })
+    .filter(Boolean) as string[];
+
+  // 必须三张 panel（0/1/2）ready 且文件真实存在
+  if (panelPaths.length !== 3) {
+    const missing = [0, 1, 2]
+      .filter((i) => !panelRows.find((p) => p.panelIndex === i))
+      .map((i) => `panelIndex=${i}`);
+    throw new Error(
+      `场景 ${scene.order} (id=${scene.id}) 图生视频要求 panelIndex 0/1/2 三张 ready panel，` +
+      `当前仅 ${panelPaths.length} 张可用。` +
+      (missing.length > 0 ? ` 缺少: ${missing.join(", ")}。` : "") +
+      ` 可用 panel: ${panelRows.map((r) => `[${r.panelIndex}] status=${r.status}`).join("; ")}`
+    );
+  }
+
+  // 校验每张 panel 文件真实存在（panelIndex 0/1/2）
+  for (let i = 0; i < 3; i++) {
+    const panel = panelRows.find((p) => p.panelIndex === i);
+    if (!panel || !panel.localPath || !existsSync(panel.localPath)) {
+      throw new Error(
+        `场景 ${scene.order} (id=${scene.id}) panelIndex=${i} 文件丢失: ${panel?.localPath ?? "(无路径)"}。` +
+        `请重新生成故事板。`
+      );
+    }
+  }
+
+  // 上传 panel 图片到 RunningHub 临时存储（方案 A）
+  const imageUrls = await uploadMultipleBinaries(panelPaths);
+
+  // 确定版本号
+  const existingClips = db
+    .select()
+    .from(videoClips)
+    .where(eq(videoClips.sceneId, scene.id))
+    .all();
+  const version =
+    existingClips.length > 0
+      ? Math.max(...existingClips.map((c) => c.version)) + 1
+      : 1;
+
+  // 收集 input panel IDs
+  const inputPanelRows = db
+    .select()
+    .from(storyboardPanels)
+    .where(eq(storyboardPanels.sceneId, scene.id))
+    .all();
+  const inputPanelIds = inputPanelRows.filter((p) => p.status === "ready").map((p) => p.id);
+
+  // 构建 motion prompt
+  const prompt =
+    scene.motionPrompt || `${scene.title}, smooth camera movement, cinematic quality`;
+
+  // 提交到 RunningHub
+  const taskId = await submitVideoTask(
+    prompt,
+    imageUrls,
+    project.aspectRatio,
+    project.resolution,
+    String(scene.duration),
+  );
+
+  const now = new Date().toISOString();
+  const localPath = getVideoPath(scene.projectId, scene.id, version);
+
+  // 始终创建新纪录（多版本）
+  const clip: any = {
+    id: uuid(),
+    projectId: scene.projectId,
+    sceneId: scene.id,
+    order: scene.order,
+    version,
+    prompt,
+    taskId,
+    runninghubStatus: "SUBMITTED",
+    localPath,
+    retryOfClipId: options.retryOfClipId ?? null,
+    retryReason: options.retryReason ?? null,
+    retryCreatedAt: options.retryOfClipId ? now : null,
+    inputPanelIdsJson: JSON.stringify(inputPanelIds),
+    duration: scene.duration,
+    resolution: project.resolution as any,
+    aspectRatio: project.aspectRatio as any,
+    status: "running",
+    error: null,
+    createdAt: now,
+    updatedAt: now,
+  };
+  db.insert(videoClips).values(clip).run();
+
+  return clip as ClipRow;
+}
+
 // ---- 失败 clip 安全重试 -------------------------------------------------
 
 export async function retryFailedClip(params: {
@@ -80,161 +233,7 @@ export async function retryFailedClip(params: {
   );
 }
 
-// =========================================================================
-// VideoService      Ƶ   ɱ    +   ̨  ѯ
-//   汾֧ ֣ ÿ     ɴ    ¼ ¼        ʷ 汾
-// =========================================================================
-
-import { v4 as uuid } from "uuid";
-import { eq, and } from "drizzle-orm";
-import { db } from "../db/index.js";
-import { videoClips, scenes, storyboardPanels, projects } from "../db/schema.js";
-import { getVideoPath, writeVideoCurrentJson } from "./storage/AssetStorageService.js";
-import {
-  uploadMultipleBinaries,
-  submitVideoTask,
-  queryTaskStatus,
-  downloadVideo,
-  hasApiKey,
-} from "./api/RunningHubVideoClient.js";
-import { existsSync } from "node:fs";
-import {
-  buildRunningHubDiagnostics,
-  pickPrimaryRunningHubResult,
-} from "./video/RunningHubDiagnosticsService.js";
-import type { VideoClip } from "@ai-video-canvas/shared";
-
-// ----      ---------------------------------------------------------------
-
-export type ClipRow = typeof videoClips.$inferSelect;
-
-// ---- Ϊ         ύ  Ƶ     ------------------------------------------------
-
-export async function generateForScene(
-  scene: {
-    id: string;
-    projectId: string;
-    order: number;
-    title: string;
-    motionPrompt: string;
-    duration: number;
-  },
-  project: { aspectRatio: string; resolution: string },
-  options: {
-    retryOfClipId?: string;
-    retryReason?: string;
-  } = {},
-): Promise<ClipRow> {
-  if (!hasApiKey()) {
-    throw new Error("RUNNINGHUB_API_KEY δ   ã          .env");
-  }
-
-  //    storyboard_panels.localPath   ȡ  ǰ 汾   panel ͼƬ·  
-  const panelRows = db
-    .select()
-    .from(storyboardPanels)
-    .where(eq(storyboardPanels.sceneId, scene.id))
-    .all()
-    .filter((p) => p.status === "ready");
-  const panelPaths = [0, 1, 2]
-    .map((i) => {
-      const panel = panelRows.find((p) => p.panelIndex === i);
-      return panel?.localPath;
-    })
-    .filter(Boolean) as string[];
-
-  //          panel  0/1/2  ready    ļ   ʵ    
-  if (panelPaths.length !== 3) {
-    const missing = [0, 1, 2]
-      .filter((i) => !panelRows.find((p) => p.panelIndex === i))
-      .map((i) => `panelIndex=${i}`);
-    throw new Error(
-      `     ${scene.order} (id=${scene.id}) ͼ    ƵҪ   panelIndex 0/1/2      ready panel  ` +
-      `  ǰ   ${panelPaths.length}  ſ  á ` +
-      (missing.length > 0 ? ` ȱ  : ${missing.join(", ")}  ` : "") +
-      `      panel: ${panelRows.map((r) => `[${r.panelIndex}] status=${r.status}`).join("; ")}`
-    );
-  }
-
-  // У  ÿ   panel  ļ   ʵ   ڣ panelIndex 0/1/2  
-  for (let i = 0; i < 3; i++) {
-    const panel = panelRows.find((p) => p.panelIndex === i);
-    if (!panel || !panel.localPath || !existsSync(panel.localPath)) {
-      throw new Error(
-        `     ${scene.order} (id=${scene.id}) panelIndex=${i}  ļ   ʧ: ${panel?.localPath ?? "(  ·  )"}  ` +
-        `         ɹ  °塣`
-      );
-    }
-  }
-
-  //  ϴ  panel ͼƬ   RunningHub   ʱ 洢       A  
-  //   ȡ download_url     ͼ    Ƶ     Base64    ɿ 
-  const imageUrls = await uploadMultipleBinaries(panelPaths);
-
-  // ȷ   汾 ţ    Ҹó         а汾  +1
-  const existingClips = db
-    .select()
-    .from(videoClips)
-    .where(eq(videoClips.sceneId, scene.id))
-    .all();
-  const version =
-    existingClips.length > 0
-      ? Math.max(...existingClips.map((c) => c.version)) + 1
-      : 1;
-
-  //  ռ  input panel IDs
-  const inputPanelRows = db
-    .select()
-    .from(storyboardPanels)
-    .where(eq(storyboardPanels.sceneId, scene.id))
-    .all();
-  const inputPanelIds = inputPanelRows.filter((p) => p.status === "ready").map((p) => p.id);
-
-  //      motion prompt
-  const prompt =
-    scene.motionPrompt || `${scene.title}, smooth camera movement, cinematic quality`;
-
-  //  ύ   RunningHub
-  const taskId = await submitVideoTask(
-    prompt,
-    imageUrls,
-    project.aspectRatio,
-    project.resolution,
-    String(scene.duration),
-  );
-
-  const now = new Date().toISOString();
-  const localPath = getVideoPath(scene.projectId, scene.id, version);
-
-  // ʼ մ    ¼ ¼    汾  
-  const clip: any = {
-    id: uuid(),
-    projectId: scene.projectId,
-    sceneId: scene.id,
-    order: scene.order,
-    version,
-    prompt,
-    taskId,
-    runninghubStatus: "SUBMITTED",
-    localPath,
-    retryOfClipId: options.retryOfClipId ?? null,
-    retryReason: options.retryReason ?? null,
-    retryCreatedAt: options.retryOfClipId ? now : null,
-    inputPanelIdsJson: JSON.stringify(inputPanelIds),
-    duration: scene.duration,
-    resolution: project.resolution as any,
-    aspectRatio: project.aspectRatio as any,
-    status: "running",
-    error: null,
-    createdAt: now,
-    updatedAt: now,
-  };
-  db.insert(videoClips).values(clip).run();
-
-  return clip as ClipRow;
-}
-
-// ----   ѯ     running / queued    clip -----------------------------------
+// ---- 轮询所有 running / queued 的 clip -----------------------------------
 
 const POLL_INTERVAL_MS = 10_000;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -242,7 +241,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 export function startBackgroundPoller(): void {
   if (pollTimer) return;
   pollTimer = setInterval(pollPendingClips, POLL_INTERVAL_MS);
-  console.log(`  [VideoService]   ̨  ѯ            ${POLL_INTERVAL_MS / 1000}s`);
+  console.log(`  [VideoService] 后台轮询已启动，间隔 ${POLL_INTERVAL_MS / 1000}s`);
 }
 
 export function stopBackgroundPoller(): void {
@@ -271,7 +270,7 @@ async function pollPendingClips(): Promise<void> {
       await pollSingleClip(clip);
     }
   } catch (err) {
-    console.error("[VideoService]   ̨  ѯ    :", err);
+    console.error("[VideoService] 后台轮询出错:", err);
   }
 }
 
@@ -286,7 +285,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
       const videoUrl = primaryResult?.url;
 
       if (!videoUrl || !clip.localPath) {
-        throw new Error("    ɹ   δ ҵ   Ƶ URL");
+        throw new Error("任务成功但未找到视频 URL");
       }
 
       await downloadVideo(videoUrl, clip.localPath);
@@ -317,7 +316,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         .where(eq(scenes.id, clip.sceneId))
         .run();
 
-      console.log(`  [VideoService]   Ƶ    : scene=${clip.sceneId} v${clip.version}`);
+      console.log(`  [VideoService] 视频就绪: scene=${clip.sceneId} v${clip.version}`);
     } else if (result.status === "FAILED") {
       const now = new Date().toISOString();
       const diagnostics = buildRunningHubDiagnostics(result);
@@ -325,7 +324,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         result.errorMessage ??
         diagnostics.runninghubErrorMessage ??
         diagnostics.runninghubFailedReasonJson ??
-        "δ֪    ";
+        "未知错误";
 
       db.update(videoClips)
         .set({
@@ -339,9 +338,9 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         .where(eq(videoClips.id, clip.id))
         .run();
 
-      console.error(`  [VideoService]   Ƶʧ  : scene=${clip.sceneId} err=${errMsg}`);
+      console.error(`  [VideoService] 视频失败: scene=${clip.sceneId} err=${errMsg}`);
     } else {
-      // QUEUED / RUNNING          Ϻ   ѯʱ  
+      // QUEUED / RUNNING
       const now = new Date().toISOString();
       const diagnostics = buildRunningHubDiagnostics(result);
 
@@ -355,7 +354,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         .run();
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "  ѯ  ѯʧ  ";
+    const msg = err instanceof Error ? err.message : "轮询查询失败";
     const now = new Date().toISOString();
 
     db.update(videoClips)
@@ -367,6 +366,6 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
       .where(eq(videoClips.id, clip.id))
       .run();
 
-    console.error(`  [VideoService]   ѯ clip ${clip.id} ʧ  : ${msg}`);
+    console.error(`  [VideoService] 轮询 clip ${clip.id} 失败: ${msg}`);
   }
 }

@@ -111,9 +111,11 @@ export async function videoRoutes(app: FastifyInstance) {
         .orderBy(videoClips.version)
         .all();
 
+      var currentClipMapForScene = scene?.currentClipId ? { [request.params.sceneId]: scene.currentClipId } : {};
+
       return {
         success: true,
-        data: rows.map((r) => annotateClip(r, scene?.currentClipId ?? undefined)),
+        data: annotateClipsWithRetryLineage(rows, currentClipMapForScene),
       };
     },
   );

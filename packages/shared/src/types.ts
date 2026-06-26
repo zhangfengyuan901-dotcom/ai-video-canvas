@@ -208,7 +208,8 @@ export type JobType =
   | "STORYBOARD_STRIP_COMPOSE"
   | "VIDEO_GENERATE"
   | "VIDEO_REGENERATE"
-  | "EXPORT_VIDEO";
+  | "EXPORT_VIDEO"
+  | "VIDEO_RETRY";
 
 export type JobStatus = "queued" | "running" | "success" | "failed" | "cancelled";
 
