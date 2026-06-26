@@ -11,6 +11,7 @@ import { hasApiKey } from "../services/api/RunningHubVideoClient.js";
 import { buildClipDiagnosticsDto, toVideoClipDto } from "../services/video/ClipDiagnosticsDto.js";
 import { createJob } from "../services/jobs/JobService.js";
 import { startVideoWorker } from "../services/jobs/VideoWorker.js";
+import { startVideoRetryWorker } from "../services/jobs/VideoRetryWorker.js";
 
 export async function videoRoutes(app: FastifyInstance) {
   // ---- 0. 检查 API Key 状态 ---------------------------------------------
@@ -84,7 +85,7 @@ export async function videoRoutes(app: FastifyInstance) {
 
       return {
         success: true,
-        data: rows.map((r) => annotateClip(r, currentClipMap[r.sceneId])),
+        data: annotateClipsWithRetryLineage(rows, currentClipMap),
       };
     },
   );
@@ -161,7 +162,75 @@ export async function videoRoutes(app: FastifyInstance) {
     },
   );
 
-  // ---- 6. 单 clip diagnostics detail endpoint ---------------------------
+
+  // ---- 6. POST /retry — 失败 clip 安全重试 ---------------------------------
+  // POST /api/projects/:projectId/scenes/:sceneId/videos/:clipId/retry
+
+  app.post<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
+    "/projects/:projectId/scenes/:sceneId/videos/:clipId/retry",
+    async (request, reply) => {
+      if (!hasApiKey()) {
+        return reply.status(400).send({
+          success: false,
+          error: "RUNNINGHUB_API_KEY 未配置，请在 .env 中设置",
+        });
+      }
+
+      const clip = db
+        .select()
+        .from(videoClips)
+        .where(eq(videoClips.id, request.params.clipId))
+        .get();
+
+      if (!clip) {
+        return reply.status(404).send({ success: false, error: "Clip not found" });
+      }
+
+      if (clip.projectId !== request.params.projectId || clip.sceneId !== request.params.sceneId) {
+        return reply.status(400).send({
+          success: false,
+          error: "Clip does not belong to this scene/project",
+        });
+      }
+
+      if (clip.status !== "failed") {
+        return reply.status(400).send({
+          success: false,
+          error: "Only failed clips can be retried",
+        });
+      }
+
+      const body = (request.body ?? {}) as { retryReason?: string };
+
+      const job = createJob(request.params.projectId, "VIDEO_RETRY", {
+        sceneId: request.params.sceneId,
+        sourceClipId: request.params.clipId,
+        retryReason: body.retryReason ?? clip.error ?? "Retry failed clip",
+      });
+
+      startVideoRetryWorker(job.id, {
+        projectId: request.params.projectId,
+        sceneId: request.params.sceneId,
+        clipId: request.params.clipId,
+        retryReason: body.retryReason ?? clip.error ?? undefined,
+      });
+
+      return {
+        success: true,
+        data: {
+          jobId: job.id,
+          status: job.status,
+          sourceClipId: clip.id,
+          retryClipId: null,
+          sceneId: clip.sceneId,
+          projectId: clip.projectId,
+        },
+      };
+    },
+  );
+
+  // ---- 7. 单 clip diagnostics detail endpoint ---------------------------
+  // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
   // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
 
   app.get<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
@@ -199,7 +268,7 @@ export async function videoRoutes(app: FastifyInstance) {
     },
   );
 
-  // ---- 7. 提供视频文件下载 -----------------------------------------------
+  // ---- 8. 提供视频文件下载 -----------------------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/video
 
   app.get<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
@@ -244,6 +313,46 @@ export async function videoRoutes(app: FastifyInstance) {
       }
     },
   );
+}
+
+
+// ---- 辅助：批量补 retry lineage ------------------------------------------
+
+function annotateClipsWithRetryLineage(rows: any[], currentClipMap: Record<string, string>) {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const childrenBySource = new Map<string, any[]>();
+
+  for (const row of rows) {
+    if (row.retryOfClipId) {
+      const list = childrenBySource.get(row.retryOfClipId) ?? [];
+      list.push(row);
+      childrenBySource.set(row.retryOfClipId, list);
+    }
+  }
+
+  return rows.map((row) => {
+    const dto = annotateClip(row, currentClipMap[row.sceneId]);
+    const source = row.retryOfClipId ? byId.get(row.retryOfClipId) : null;
+    const children = childrenBySource.get(row.id) ?? [];
+
+    return {
+      ...dto,
+      retrySource: source
+        ? {
+            id: source.id,
+            version: source.version,
+            status: source.status,
+            error: source.error ?? null,
+          }
+        : null,
+      retryChildren: children.map((child) => ({
+        id: child.id,
+        version: child.version,
+        status: child.status,
+        createdAt: child.createdAt,
+      })),
+    };
+  });
 }
 
 // ---- 辅助 ----------------------------------------------------------------

@@ -16,7 +16,7 @@ interface SceneVideoPanelProps {
 
 export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
   var { get } = useApi();
-  var { fetchClips, getCurrentClip, selectVersion } = useVideoClips();
+  var { fetchClips, getCurrentClip, selectVersion, retryFailedClip } = useVideoClips();
   var currentProject = useProjectStore(function (s) { return s.currentProject; });
   var isGeneratingVideo = useProjectStore(function (s) { return s.isGeneratingVideo; });
   var clipsByScene = useProjectStore(function (s) { return s.clipsByScene; });
@@ -24,6 +24,8 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
   var [localJobId, setLocalJobId] = useState<string | null>(null);
   var [localJobProgress, setLocalJobProgress] = useState(0);
   var [diagnosticsDrawerOpen, setDiagnosticsDrawerOpen] = useState(false);
+  var [localRetryJobId, setLocalRetryJobId] = useState<string | null>(null);
+  var [retryingClipId, setRetryingClipId] = useState<string | null>(null);
 
   var allClips = clipsByScene[sceneId] ?? [];
   var currentClip = getCurrentClip(sceneId);
@@ -71,6 +73,24 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
     } catch (err) {
       console.error("Video generation failed:", err);
       useProjectStore.getState().setGeneratingVideo(false);
+    }
+  }
+
+  // Retry a failed clip
+  async function handleRetryFailedClip(clipId: string, retryReason?: string) {
+    if (!currentProject || isGeneratingVideo || retryingClipId) return;
+
+    setRetryingClipId(clipId);
+    try {
+      var result = await retryFailedClip(sceneId, clipId, retryReason);
+      if (result?.jobId) {
+        setLocalRetryJobId(result.jobId);
+      }
+    } catch (err) {
+      console.error("Video retry failed:", err);
+    } finally {
+      await fetchClips();
+      setRetryingClipId(null);
     }
   }
 
@@ -171,8 +191,12 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
         clip={currentClip}
         open={diagnosticsDrawerOpen}
         onClose={function () { setDiagnosticsDrawerOpen(false); }}
-        onRegenerate={currentClip?.status === "failed" ? handleGenerate : undefined}
-        isRegenerating={isGeneratingVideo}
+        onRegenerate={
+    currentClip?.status === "failed"
+      ? function () { handleRetryFailedClip(currentClip!.id, currentClip!.diagnostics?.errorMessage ?? currentClip!.error ?? undefined); }
+      : undefined
+  }
+        isRegenerating={isGeneratingVideo || retryingClipId === currentClip?.id || !!localRetryJobId}
       />
     </div>
   );

@@ -121,7 +121,7 @@ export default function ClipDiagnosticsDrawer({
                 disabled={isRegenerating}
                 className="mt-2 text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:bg-zinc-700 disabled:text-zinc-500"
               >
-                {isRegenerating ? "重新生成中..." : "按建议调整后重新生成"}
+                {isRegenerating ? "重试提交中..." : "创建重试版本"}
               </button>
             )}
           </div>
@@ -153,6 +153,42 @@ export default function ClipDiagnosticsDrawer({
               <DiagnosticsCopyButton label="复制完整诊断" value={fullJson} />
             </div>
           </Section>
+
+          {/* Retry Lineage */}
+          {(clip.retryOfClipId || clip.retrySource || (clip.retryChildren && clip.retryChildren.length > 0)) && (
+            <Section title="Retry Lineage">
+              {clip.retrySource && (
+                <DiagRow
+                  label="Retry Of"
+                  value={"v" + clip.retrySource.version + " · " + clip.retrySource.status + " · " + clip.retrySource.id}
+                  mono
+                />
+              )}
+
+              {clip.retryReason && (
+                <DiagRow label="Retry Reason" value={clip.retryReason} />
+              )}
+
+              {clip.retryCreatedAt && (
+                <DiagRow label="Retry Created" value={formatTime(clip.retryCreatedAt)} />
+              )}
+
+              {clip.retryChildren && clip.retryChildren.length > 0 && (
+                <div className="grid grid-cols-[120px_1fr] gap-2 text-[10px]">
+                  <span className="text-zinc-600">Retry Children</span>
+                  <div className="space-y-1">
+                    {clip.retryChildren.map(function (child) {
+                      return (
+                        <div key={child.id} className="font-mono text-zinc-400 break-all">
+                          v{child.version} · {child.status} · {child.id}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </Section>
+          )}
 
           {/* Usage */}
           {d?.usage && (

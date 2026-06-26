@@ -142,6 +142,21 @@ export interface VideoClip {
   version: number;
   prompt: string;
   taskId?: string;
+  retryOfClipId?: string | null;
+  retryReason?: string | null;
+  retryCreatedAt?: string | null;
+  retrySource?: {
+    id: string;
+    version: number;
+    status: ClipStatus;
+    error?: string | null;
+  } | null;
+  retryChildren?: Array<{
+    id: string;
+    version: number;
+    status: ClipStatus;
+    createdAt: string;
+  }> | null;
   remoteUrl?: string;
   localPath?: string;
   duration: number;
@@ -252,6 +267,16 @@ export interface GptScriptOutput {
 
 // ---- API ---------------------------------------------------------------
 
+
+
+export interface VideoRetryResponse {
+  jobId: string;
+  status: string;
+  sourceClipId: string;
+  retryClipId?: string | null;
+  sceneId: string;
+  projectId: string;
+}
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;

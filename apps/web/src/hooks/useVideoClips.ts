@@ -6,7 +6,7 @@
 import { useCallback } from "react";
 import { useApi } from "./useApi";
 import { useProjectStore } from "../stores/projectStore";
-import type { VideoClip } from "@ai-video-canvas/shared";
+import type { VideoClip, VideoRetryResponse } from "@ai-video-canvas/shared";
 
 export function useVideoClips() {
   const { get, post } = useApi();
@@ -35,6 +35,22 @@ export function useVideoClips() {
   );
 
   /** 持久化版本选择 → fetchClips 回读 → 返回 data */
+  const retryFailedClip = useCallback(
+    async (sceneId: string, clipId: string, retryReason?: string) => {
+      const project = useProjectStore.getState().currentProject;
+      if (!project) return null;
+
+      const result = await post<VideoRetryResponse>(
+        `/projects/${project.id}/scenes/${sceneId}/videos/${clipId}/retry`,
+        { retryReason },
+      );
+
+      await fetchClips();
+      return result;
+    },
+    [post, fetchClips],
+  );
+
   const selectVersion = useCallback(
     async (sceneId: string, clipId: string) => {
       const project = useProjectStore.getState().currentProject;
@@ -45,5 +61,5 @@ export function useVideoClips() {
     [post, fetchClips],
   );
 
-  return { clipsByScene, fetchClips, getCurrentClip, selectVersion };
+  return { clipsByScene, fetchClips, getCurrentClip, selectVersion, retryFailedClip };
 }
