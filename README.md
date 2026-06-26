@@ -148,6 +148,31 @@ GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
 
 前端诊断面板默认读取列表接口返回的 summary diagnostics；当用户展开「查看诊断」时，会调用 `/diagnostics` detail endpoint 加载完整 `usage / results / failedReason / promptTips`。
 
+### RunningHub 诊断抽屉
+
+前端视频版本区提供「排障详情」入口。点击后会打开右侧诊断抽屉，并通过：
+
+```http
+GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
+```
+
+加载完整诊断信息。
+
+诊断抽屉包含：
+
+* RunningHub 原始状态
+* Clip 状态
+* 输出节点与输出类型
+* usage 消耗信息
+* results 输出摘要
+* failedReason 格式化 JSON
+* promptTips 格式化展示
+* 复制 taskId / error / failedReason / promptTips / full diagnostics
+* 基于错误码、failedReason、promptTips 的重试建议
+
+诊断抽屉不会自动修复任务，也不会自动修改生成参数；它只提供排障信息和重试引导。
+
+
 
 
 这些字段用于排查工作流失败、确认输出节点和分析任务消耗。
