@@ -1,12 +1,12 @@
 // =========================================================================
-// SceneVideoPanel — 单个镜头的视频版本区
-// 展示当前视频、生成视频、切换版本
-// =========================================================================
+// SceneVideoPanel 鈥?鍗曚釜闀滃ご鐨勮棰戠増鏈尯
+// 灞曠ず褰撳墠瑙嗛銆佺敓鎴愯棰戙€佸垏鎹㈢増鏈?// =========================================================================
 
 import { useState, useEffect, useCallback } from "react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useApi } from "../../hooks/useApi";
 import { useVideoClips } from "../../hooks/useVideoClips";
+import ClipDiagnosticsPanel from "./ClipDiagnosticsPanel";
 
 interface SceneVideoPanelProps {
   sceneId: string;
@@ -65,7 +65,7 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
         body: JSON.stringify({ sceneIds: [sceneId] }),
       });
       const json = await res.json();
-      if (!json.success) throw new Error(json.error ?? "生成视频失败");
+      if (!json.success) throw new Error(json.error ?? "鐢熸垚瑙嗛澶辫触");
       setLocalJobId(json.data.jobId);
     } catch (err) {
       console.error("Video generation failed:", err);
@@ -82,7 +82,7 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
     try {
       const data = await selectVersion(sceneId, next.id);
       if (data) {
-        // Rebuild selectedClipId — handled by fetchClips inside selectVersion
+        // Rebuild selectedClipId 鈥?handled by fetchClips inside selectVersion
         // The store's clipsByScene is already updated
       }
     } catch (err) {
@@ -94,20 +94,20 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
     <div className="rounded-lg border border-zinc-800 bg-zinc-950/60 p-3 space-y-2">
       {/* Header */}
       <div className="flex items-center gap-2">
-        <span className="text-xs font-medium text-zinc-400">视频版本</span>
+        <span className="text-xs font-medium text-zinc-400">瑙嗛鐗堟湰</span>
         <div className="flex-1" />
         <button
           onClick={(e) => { e.stopPropagation(); fetchClips(); }}
           className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
         >
-          刷新
+          鍒锋柊
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); handleGenerate(); }}
           disabled={isGeneratingVideo || !currentProject}
           className="text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-0.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
         >
-          {isGeneratingVideo ? `生成中... ${localJobProgress}%` : currentClip ? "重新生成" : "生成视频"}
+          {isGeneratingVideo ? `鐢熸垚涓?.. ${localJobProgress}%` : currentClip ? "閲嶆柊鐢熸垚" : "鐢熸垚瑙嗛"}
         </button>
       </div>
 
@@ -137,14 +137,23 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
               {currentClip.duration}s
             </span>
           </div>
+          <ClipDiagnosticsPanel clip={currentClip} />
         </div>
       ) : currentClip && currentClip.status === "running" ? (
-        <div className="flex items-center justify-center py-8">
-          <span className="text-xs text-blue-400 animate-pulse">视频生成中...</span>
+        <div>
+          <div className="flex items-center justify-center py-8">
+            <span className="text-xs text-blue-400 animate-pulse">视频生成中...</span>
+          </div>
+          <ClipDiagnosticsPanel clip={currentClip} />
         </div>
       ) : currentClip && currentClip.status === "failed" ? (
-        <div className="flex items-center justify-center py-8">
-          <span className="text-xs text-red-400">视频生成失败: {currentClip.error ?? "未知错误"}</span>
+        <div>
+          <div className="flex items-center justify-center py-8">
+            <span className="text-xs text-red-400">
+              视频生成失败: {currentClip.error ?? currentClip.diagnostics?.errorMessage ?? "未知错误"}
+            </span>
+          </div>
+          <ClipDiagnosticsPanel clip={currentClip} />
         </div>
       ) : (
         <div className="flex items-center justify-center py-8">

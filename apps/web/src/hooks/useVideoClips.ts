@@ -1,6 +1,6 @@
-// =========================================================================
-// useVideoClips — 共享视频 clip 逻辑
-// TimelineTrack 和 SceneVideoPanel 共用同一套 clips 加载 / 版本选择
+﻿// =========================================================================
+// useVideoClips 鈥?鍏变韩瑙嗛 clip 閫昏緫
+// TimelineTrack 鍜?SceneVideoPanel 鍏辩敤鍚屼竴濂?clips 鍔犺浇 / 鐗堟湰閫夋嫨
 // =========================================================================
 
 import { useCallback } from "react";
@@ -12,16 +12,16 @@ export function useVideoClips() {
   const { get, post } = useApi();
   const clipsByScene = useProjectStore((s) => s.clipsByScene);
 
-  /** 拉取全部 clips 并写入 store，返回原始数据用于 isCurrent 重建 */
+  /** 鎷夊彇鍏ㄩ儴 clips 骞跺啓鍏?store锛岃繑鍥炲師濮嬫暟鎹敤浜?isCurrent 閲嶅缓 */
   const fetchClips = useCallback(async () => {
     const project = useProjectStore.getState().currentProject;
     if (!project) return [];
-    const data = await get<any[]>(`/projects/${project.id}/videos`);
+    const data = await get<VideoClip[]>(`/projects/${project.id}/videos`);
     useProjectStore.getState().setAllClips(data);
     return data;
   }, [get]);
 
-  /** 获取某个 scene 的当前 clip（isCurrent 优先，其次最新版本） */
+  /** 鑾峰彇鏌愪釜 scene 鐨勫綋鍓?clip锛坕sCurrent 浼樺厛锛屽叾娆℃渶鏂扮増鏈級 */
   const getCurrentClip = useCallback(
     (sceneId: string) => {
       const clips = clipsByScene[sceneId] ?? [];
@@ -34,7 +34,7 @@ export function useVideoClips() {
     [clipsByScene],
   );
 
-  /** 持久化版本选择 → fetchClips 回读 → 返回 data */
+  /** 鎸佷箙鍖栫増鏈€夋嫨 鈫?fetchClips 鍥炶 鈫?杩斿洖 data */
   const selectVersion = useCallback(
     async (sceneId: string, clipId: string) => {
       const project = useProjectStore.getState().currentProject;

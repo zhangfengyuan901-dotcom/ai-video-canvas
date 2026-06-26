@@ -1,4 +1,4 @@
-﻿# AI 视频画布
+# AI 视频画布
 
 本地运行的 AI 视频脚本 / 故事板 / 图生视频画布工具。
 
@@ -111,6 +111,41 @@ RUNNINGHUB_UPLOAD_URL=https://www.runninghub.cn/openapi/v2/media/upload/binary
 | `runninghub_task_cost_time` | RunningHub 返回的任务耗时 |
 | `last_polled_at` | 最近一次轮询时间 |
 | `completed_at` | 任务完成时间 |
+
+### 视频诊断 API
+
+视频列表接口会返回诊断摘要：
+
+```http
+GET /api/projects/:projectId/videos
+GET /api/projects/:projectId/scenes/:sceneId/videos
+```
+
+每个 `VideoClip` 包含：
+
+```ts
+diagnostics?: {
+  status?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  outputNodeId?: string | null;
+  outputType?: string | null;
+  taskCostTime?: string | null;
+  lastPolledAt?: string | null;
+  completedAt?: string | null;
+}
+```
+
+完整诊断信息可通过：
+
+```http
+GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
+```
+
+该接口返回完整 `usage / results / failedReason / promptTips`，用于排查 RunningHub AI App 任务失败、确认输出节点和分析任务耗时。
+
+前端视频版本区会显示 RunningHub 诊断摘要，可展开查看任务 ID、错误码、输出节点、输出类型、耗时、最近轮询时间和失败原因摘要。
+
 
 这些字段用于排查工作流失败、确认输出节点和分析任务消耗。
 
