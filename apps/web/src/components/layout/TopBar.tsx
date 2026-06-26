@@ -5,6 +5,7 @@
 import { useProjectStore } from "../../stores/projectStore";
 import { useState, useEffect } from "react";
 import { useApi } from "../../hooks/useApi";
+import ExportPreflightModal from "../export/ExportPreflightModal";
 
 export default function TopBar() {
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -14,6 +15,7 @@ export default function TopBar() {
   const [exportProgress, setExportProgress] = useState<number>(0);
   const [exportFilename, setExportFilename] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
+  const [showPreflight, setShowPreflight] = useState(false);
 
   // ---- Poll export job --------------------------------------------------
 
@@ -61,14 +63,21 @@ export default function TopBar() {
 
   // ---- Handle export ----------------------------------------------------
 
-  async function handleExport() {
+  function handleExportClick() {
     if (!currentProject || exportJobId) return;
+    setShowPreflight(true);
+  }
+
+  async function startExport(allowPartial: boolean) {
+    if (!currentProject || exportJobId) return;
+    setShowPreflight(false);
     setExportFilename(null);
     setExportError(null);
     setExportProgress(0);
     try {
       const data = await post<{ jobId: string }>(
         `/projects/${currentProject.id}/export`,
+        { allowPartial },
       );
       setExportJobId(data.jobId);
     } catch (err) {
@@ -109,7 +118,7 @@ export default function TopBar() {
           </a>
         ) : (
           <button
-            onClick={handleExport}
+            onClick={handleExportClick}
             disabled={isExporting}
             className={`text-xs px-3 py-1 rounded font-medium transition-colors ${
               isExporting
@@ -120,6 +129,13 @@ export default function TopBar() {
             {isExporting ? `导出中... ${exportProgress}%` : "导出完整视频"}
           </button>
         )
+      )}
+      {showPreflight && currentProject && (
+        <ExportPreflightModal
+          projectId={currentProject.id}
+          onClose={() => setShowPreflight(false)}
+          onConfirm={(allowPartial) => startExport(allowPartial)}
+        />
       )}
       <span className="text-xs text-zinc-600">Phase 4 · 图生视频</span>
     </header>
