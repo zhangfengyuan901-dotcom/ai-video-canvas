@@ -137,8 +137,8 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   function getThumbnailUrl(sceneId: string): string | null {
     const projectId = useProjectStore.getState().currentProject?.id;
     if (!projectId) return null;
-    // 优先使用三宫格 strip，否则 fallback 到第一张 panel
-    return `/api/projects/${projectId}/scenes/${sceneId}/strip`;
+    // 后端统一处理 strip / panel0 / 任意 ready panel fallback
+    return `/api/projects/${projectId}/scenes/${sceneId}/preview`;
   }
 
   function getClip(sceneId: string) {

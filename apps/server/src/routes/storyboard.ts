@@ -176,7 +176,58 @@ export async function storyboardRoutes(app: FastifyInstance) {
       return reply.type("image/png").send(readFileSync(panel.localPath));
     },
   );
-  // ---- 5. Serve storyboard strip image ----------------------------------
+  // ---- 5. Serve scene preview image --------------------------------------
+  // GET /api/projects/:projectId/scenes/:sceneId/preview
+  // Fallback chain: strip → panel0 → any ready panel → 404
+
+  app.get<{ Params: { projectId: string; sceneId: string } }>(
+    "/projects/:projectId/scenes/:sceneId/preview",
+    async (request, reply) => {
+      const scene = db
+        .select()
+        .from(scenes)
+        .where(eq(scenes.id, request.params.sceneId))
+        .get();
+
+      if (!scene || scene.projectId !== request.params.projectId) {
+        return reply.status(404).send({
+          success: false,
+          error: "Scene not found for this project",
+        });
+      }
+
+      // Fallback 1: strip 三宫格综合预览
+      const stripPath = getStripPath(request.params.projectId, request.params.sceneId);
+      if (existsSync(stripPath)) {
+        return reply.type("image/png").send(readFileSync(stripPath));
+      }
+
+      // Fallback 2/3: panel0 → 任意 ready panel
+      const panels = db
+        .select()
+        .from(storyboardPanels)
+        .where(eq(storyboardPanels.sceneId, request.params.sceneId))
+        .orderBy(storyboardPanels.panelIndex)
+        .all()
+        .filter((p) => p.projectId === request.params.projectId)
+        .filter((p) => p.status === "ready")
+        .filter((p) => p.localPath && existsSync(p.localPath));
+
+      const panel0 = panels.find((p) => p.panelIndex === 0);
+      const fallbackPanel = panel0 ?? panels[0];
+
+      if (fallbackPanel?.localPath) {
+        return reply.type("image/png").send(readFileSync(fallbackPanel.localPath));
+      }
+
+      // Fallback 4: 全部不可用
+      return reply.status(404).send({
+        success: false,
+        error: "Preview not found",
+      });
+    },
+  );
+  // ---- 6. Serve storyboard strip image ----------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/strip
 
   app.get<{ Params: { projectId: string; sceneId: string } }>(
