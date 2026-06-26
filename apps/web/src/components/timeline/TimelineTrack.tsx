@@ -154,8 +154,20 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
     return clips.reduce((latest, c) => (c.version > latest.version ? c : latest), clips[0]);
   }
 
-  function handleSelectVersion(sceneId: string, clipId: string) {
+  async function handleSelectVersion(sceneId: string, clipId: string) {
+    const project = useProjectStore.getState().currentProject;
+    if (!project) return;
+
+    // 乐观更新，让用户立即看到切换
     setSelectedClipId((prev) => ({ ...prev, [sceneId]: clipId }));
+
+    try {
+      await post(`/projects/${project.id}/scenes/${sceneId}/videos/${clipId}/use-version`);
+      await fetchClips();
+    } catch (err) {
+      console.error("Use version failed:", err);
+      await fetchClips();
+    }
   }
 
   // ---- Drag handlers ----------------------------------------------------

@@ -144,13 +144,19 @@ export async function videoRoutes(app: FastifyInstance) {
       if (clip.sceneId !== request.params.sceneId || clip.projectId !== request.params.projectId) {
         return reply.status(400).send({ success: false, error: "Clip does not belong to this scene/project" });
       }
+      if (clip.status !== "ready") {
+        return reply.status(400).send({
+          success: false,
+          error: "Only ready clips can be used as current version",
+        });
+      }
 
       db.update(scenes)
         .set({ currentClipId: clip.id, updatedAt: new Date().toISOString() })
         .where(eq(scenes.id, request.params.sceneId))
         .run();
 
-      return { success: true, data: { sceneId: request.params.sceneId, clipId: clip.id } };
+      return { success: true, data: { sceneId: request.params.sceneId, clipId: clip.id, version: clip.version } };
     },
   );
 
