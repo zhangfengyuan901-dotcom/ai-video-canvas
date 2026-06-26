@@ -11,7 +11,7 @@ import path from "node:path";
 
 var PROJECT_ROOT = process.cwd();
 
-function read(file) {
+function read(file: string) {
   var fullPath = path.join(PROJECT_ROOT, file);
   if (!existsSync(fullPath)) { console.error("[FAIL] File not found:", file); process.exit(1); }
   return readFileSync(fullPath, "utf8");
@@ -28,7 +28,7 @@ var files = [
   "apps/web/src/components/scene/ClipDiagnosticsDrawer.tsx",
 ];
 
-var mojibakePatterns = ["\uFFFD", "鈥�", "鐢熸", "瑙嗛", "鍒锋", "閲嶆", "鍏变韩", "鎷夊彇"];
+var mojibakePatterns = ["\uFFFD", "\u9225\uFFFD", "\u9422\u71B8", "\u7459\u55DB", "\u9352\u950B", "\u95B2\u5D86", "\u934F\u53D8\u97E9", "\u93B7\u590A\u5F47"];
 
 for (var file of files) {
   var content = read(file);

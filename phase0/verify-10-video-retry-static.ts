@@ -53,10 +53,11 @@ if (ok) console.log("[PASS] VideoService has retryFailedClip + options");
 
 // ---- Check 4: VideoRetryWorker --------------------------------------------
 
+var worker = "";
 if (!existsSync("apps/server/src/services/jobs/VideoRetryWorker.ts")) {
   console.error("[FAIL] VideoRetryWorker.ts missing"); ok = false;
 } else {
-  var worker = read("apps/server/src/services/jobs/VideoRetryWorker.ts");
+  worker = read("apps/server/src/services/jobs/VideoRetryWorker.ts");
   if (!worker.includes("retryFailedClip")) { console.error("[FAIL] VideoRetryWorker missing retryFailedClip"); ok = false; }
   if (!worker.includes("startVideoRetryWorker")) { console.error("[FAIL] VideoRetryWorker missing export"); ok = false; }
   if (ok) console.log("[PASS] VideoRetryWorker exists");
@@ -81,7 +82,11 @@ if (ok) console.log("[PASS] useVideoClips has retryFailedClip");
 // ---- Check 7: SceneVideoPanel ---------------------------------------------
 
 var svp = read("apps/web/src/components/scene/SceneVideoPanel.tsx");
-if (!svp.includes("handleRetryFailedClip")) { console.error("[FAIL] SceneVideoPanel missing handleRetryFailedClip"); ok = false; }
+var svpChecks = ["handleRetryFailedClip", "localRetryJobId", "setLocalRetryJobId(null)"];
+for (var sc of svpChecks) {
+  if (!svp.includes(sc)) { console.error("[FAIL] SceneVideoPanel missing:", sc); ok = false; }
+}
+if (!svp.includes("Retry job failed")) { console.error("[FAIL] SceneVideoPanel missing retry job polling error handling"); ok = false; }
 if (ok) console.log("[PASS] SceneVideoPanel has retry handler");
 
 // ---- Check 8: ClipDiagnosticsDrawer ---------------------------------------
@@ -109,7 +114,7 @@ function assertAsciiOnly(name: string, content: string) {
 
 // ---- Check 10: No mojibake / Ark ------------------------------------------
 
-var badPatterns = ["\uFFFD", "鈥�", "鐢熸", "瑙嗛", "鍒锋", "閲嶆", "Ark", "ARK_", "VIDEO_PROVIDER", "VideoProviderService"];
+var badPatterns = ["\uFFFD", "\u9225\uFFFD", "\u9422\u71B8", "\u7459\u55DB", "\u9352\u950B", "\u95B2\u5D86", "Ark", "ARK_", "VIDEO_PROVIDER", "VideoProviderService"];
 var filesToCheck = [schema, shared, vs, vr, dto, worker, hook, svp, drawer];
 var fileNames = ["schema", "shared", "VideoService", "routes", "dto", "worker", "hook", "SceneVideoPanel", "drawer"];
 for (var fi = 0; fi < filesToCheck.length; fi++) {

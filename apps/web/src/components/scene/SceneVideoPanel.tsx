@@ -54,7 +54,34 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
       }
     }, 2000);
     return function () { clearInterval(poll); };
-  }, [localJobId, currentProject?.id, get, fetchClips]);
+ }, [localJobId, currentProject?.id, get, fetchClips]);
+
+  // Poll local retry job
+  useEffect(function () {
+    if (!localRetryJobId || !currentProject) return;
+    var poll = setInterval(async function () {
+      try {
+        var job = await get<{ status: string; progress: number; error?: string }>(`/jobs/${localRetryJobId}`);
+        if (job.status === "success") {
+          setLocalRetryJobId(null);
+          await fetchClips();
+        } else if (job.status === "failed") {
+          setLocalRetryJobId(null);
+          console.error("Retry job failed:", job.error ?? "unknown error");
+          await fetchClips();
+        } else if (job.status === "cancelled") {
+          setLocalRetryJobId(null);
+          console.error("Retry job cancelled");
+          await fetchClips();
+        }
+      } catch (err) {
+        setLocalRetryJobId(null);
+        console.error("Retry job polling error:", err);
+        await fetchClips();
+      }
+    }, 2000);
+    return function () { clearInterval(poll); };
+  }, [localRetryJobId, currentProject?.id, get, fetchClips]);
 
   // Generate video for this scene
   async function handleGenerate() {
