@@ -6,6 +6,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useApi } from "../../hooks/useApi";
 import { useProjectStore } from "../../stores/projectStore";
 import SceneList from "../scene/SceneList";
+import ProjectProgressPanel from "../project/ProjectProgressPanel";
 import type { Project } from "@ai-video-canvas/shared";
 
 export default function CanvasPanel() {
@@ -150,6 +151,11 @@ export default function CanvasPanel() {
                   创建于 {new Date(currentProject.createdAt).toLocaleDateString()}
                 </span>
               </div>
+            </section>
+
+            {/* Project progress */}
+            <section>
+              <ProjectProgressPanel />
             </section>
 
             {/* Scenes */}
