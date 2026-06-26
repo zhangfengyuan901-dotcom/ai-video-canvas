@@ -8,6 +8,7 @@ import { eq } from "drizzle-orm";
 import { db } from "../db/index.js";
 import { videoClips, scenes, projects } from "../db/schema.js";
 import { hasApiKey } from "../services/api/RunningHubVideoClient.js";
+import { buildClipDiagnosticsDto, toVideoClipDto } from "../services/video/ClipDiagnosticsDto.js";
 import { createJob } from "../services/jobs/JobService.js";
 import { startVideoWorker } from "../services/jobs/VideoWorker.js";
 
@@ -160,7 +161,45 @@ export async function videoRoutes(app: FastifyInstance) {
     },
   );
 
-  // ---- 6. 提供视频文件下载 -----------------------------------------------
+  // ---- 6. 单 clip diagnostics detail endpoint ---------------------------
+  // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
+
+  app.get<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
+    "/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics",
+    async (request, reply) => {
+      const clip = db
+        .select()
+        .from(videoClips)
+        .where(eq(videoClips.id, request.params.clipId))
+        .get();
+
+      if (!clip) {
+        return reply.status(404).send({ success: false, error: "Clip not found" });
+      }
+
+      if (clip.projectId !== request.params.projectId || clip.sceneId !== request.params.sceneId) {
+        return reply.status(400).send({
+          success: false,
+          error: "Clip does not belong to this scene/project",
+        });
+      }
+
+      return {
+        success: true,
+        data: {
+          clipId: clip.id,
+          projectId: clip.projectId,
+          sceneId: clip.sceneId,
+          version: clip.version,
+          status: clip.status,
+          taskId: clip.taskId,
+          diagnostics: buildClipDiagnosticsDto(clip, { includeFull: true }),
+        },
+      };
+    },
+  );
+
+  // ---- 7. 提供视频文件下载 -----------------------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/video
 
   app.get<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
@@ -210,9 +249,7 @@ export async function videoRoutes(app: FastifyInstance) {
 // ---- 辅助 ----------------------------------------------------------------
 
 function annotateClip(row: any, currentClipIdForScene?: string) {
-  return {
-    ...row,
-    locked: row.locked !== undefined ? !!row.locked : undefined,
-    isCurrent: currentClipIdForScene === row.id,
-  };
+  return toVideoClipDto(row, currentClipIdForScene, {
+    includeFullDiagnostics: false,
+  });
 }

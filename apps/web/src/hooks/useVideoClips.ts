@@ -16,7 +16,7 @@ export function useVideoClips() {
   const fetchClips = useCallback(async () => {
     const project = useProjectStore.getState().currentProject;
     if (!project) return [];
-    const data = await get<any[]>(`/projects/${project.id}/videos`);
+    const data = await get<VideoClip[]>(`/projects/${project.id}/videos`);
     useProjectStore.getState().setAllClips(data);
     return data;
   }, [get]);
@@ -26,7 +26,7 @@ export function useVideoClips() {
     (sceneId: string) => {
       const clips = clipsByScene[sceneId] ?? [];
       if (clips.length === 0) return null;
-      return clips.find((c: any) => c.isCurrent) ?? clips.reduce(
+      return clips.find((c) => c.isCurrent) ?? clips.reduce(
         (latest, c) => (c.version > latest.version ? c : latest),
         clips[0],
       );

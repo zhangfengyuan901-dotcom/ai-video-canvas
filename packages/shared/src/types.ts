@@ -1,6 +1,5 @@
 // =========================================================================
-// @ai-video-canvas/shared — 前后端共享数据类型
-// =========================================================================
+// @ai-video-canvas/shared 鈥?鍓嶅悗绔叡浜暟鎹被鍨?// =========================================================================
 
 // ---- Project -----------------------------------------------------------
 
@@ -10,7 +9,7 @@ export interface Project {
   description?: string;
   aspectRatio: "16:9" | "9:16";
   resolution: "720p" | "1080p" | "4k";
-  defaultSceneDuration: number; // 默认 8
+  defaultSceneDuration: number; // 榛樿 8
   rootPath: string;
   createdAt: string;
   updatedAt: string;
@@ -55,7 +54,7 @@ export interface Scene {
   motionPrompt: string;
   dialogue?: string;
   audioEffects?: string;
-  duration: number; // 默认 8
+  duration: number; // 榛樿 8
   status: SceneStatus;
   locked: boolean;
   createdAt: string;
@@ -91,6 +90,46 @@ export interface StoryboardPanel {
   updatedAt: string;
 }
 
+
+export interface RunningHubTaskUsageDto {
+  consumeMoney?: string | number | null;
+  consumeCoins?: string | number | null;
+  taskCostTime?: string | number | null;
+  thirdPartyConsumeMoney?: string | number | null;
+}
+
+export interface RunningHubTaskResultDto {
+  url?: string;
+  nodeId?: string;
+  outputType?: string;
+  text?: string | null;
+}
+
+export interface RunningHubClipDiagnostics {
+  status?: string | null;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+  failedReason?: unknown | null;
+  usage?: RunningHubTaskUsageDto | null;
+  results?: RunningHubTaskResultDto[] | null;
+  promptTips?: string | null;
+  outputNodeId?: string | null;
+  outputType?: string | null;
+  taskCostTime?: string | null;
+  lastPolledAt?: string | null;
+  completedAt?: string | null;
+}
+
+export interface VideoClipDiagnosticsDetail {
+  clipId: string;
+  projectId: string;
+  sceneId: string;
+  version: number;
+  status: ClipStatus;
+  taskId?: string | null;
+  diagnostics: RunningHubClipDiagnostics;
+}
+
 // ---- VideoClip ---------------------------------------------------------
 
 export type ClipStatus = "queued" | "running" | "ready" | "failed";
@@ -111,6 +150,8 @@ export interface VideoClip {
   inputPanelIds: string[];
   status: ClipStatus;
   error?: string;
+  isCurrent?: boolean;
+  diagnostics?: RunningHubClipDiagnostics;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,0 +1,234 @@
+// =========================================================================
+// ClipDiagnosticsDrawer — 右侧诊断抽屉
+// 完整展示 RunningHub 诊断信息，包括 retry guidance、复制按钮、
+// usage、results、failedReason、promptTips 等。
+// =========================================================================
+
+import { useEffect } from "react";
+import type { VideoClip } from "@ai-video-canvas/shared";
+import { useClipDiagnosticsDetail } from "../../hooks/useClipDiagnosticsDetail";
+import DiagnosticsCopyButton from "./DiagnosticsCopyButton";
+import {
+  buildRunningHubRetryGuidance,
+  buildDiagnosticsCopyText,
+  buildErrorSummary,
+  prettyJson,
+  redactUrl,
+  formatPromptTips,
+  formatFailedReason,
+  truncateMiddle,
+} from "../../utils/runninghubDiagnostics";
+
+interface ClipDiagnosticsDrawerProps {
+  clip: VideoClip | null;
+  open: boolean;
+  onClose: () => void;
+  onRegenerate?: () => void;
+  isRegenerating?: boolean;
+}
+
+export default function ClipDiagnosticsDrawer({
+  clip,
+  open,
+  onClose,
+  onRegenerate,
+  isRegenerating,
+}: ClipDiagnosticsDrawerProps) {
+  var { diagnostics, loading, error: detailError, loaded, load, reload } = useClipDiagnosticsDetail(clip);
+
+  useEffect(function () {
+    if (open && clip) { void load(); }
+  }, [open, clip?.id, load]);
+
+  if (!open || !clip) return null;
+
+  var d = diagnostics;
+  var guidance = buildRunningHubRetryGuidance(clip, d);
+  var fullJson = buildDiagnosticsCopyText(clip, d);
+  var errorSummary = buildErrorSummary(clip, d);
+  var failedReasonFormatted = formatFailedReason(d?.failedReason);
+  var promptTipsFormatted = formatPromptTips(d?.promptTips);
+
+  function severityBorder(severity: string): string {
+    if (severity === "error") return "border-red-800 bg-red-950/30";
+    if (severity === "warning") return "border-yellow-800 bg-yellow-950/30";
+    return "border-blue-800 bg-blue-950/30";
+  }
+  function severityBadge(severity: string): string {
+    if (severity === "error") return "bg-red-600/20 text-red-400";
+    if (severity === "warning") return "bg-yellow-600/20 text-yellow-400";
+    return "bg-blue-600/20 text-blue-400";
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end">
+      <button
+        type="button"
+        className="absolute inset-0 bg-black/40"
+        onClick={function (e) { e.stopPropagation(); onClose(); }}
+        aria-label="关闭诊断抽屉遮罩"
+      />
+      <aside
+        className="relative z-10 h-full w-[420px] max-w-[92vw] overflow-y-auto border-l border-zinc-800 bg-zinc-950 shadow-2xl"
+        onClick={function (e) { e.stopPropagation(); }}
+      >
+        {/* Header */}
+        <div className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950 p-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-sm font-medium text-zinc-200">RunningHub 诊断详情</h2>
+              <p className="text-[10px] text-zinc-500 mt-0.5">
+                Clip v{clip.version} · {clip.status}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={function (e) { e.stopPropagation(); onClose(); }}
+              className="text-[11px] text-zinc-500 hover:text-zinc-300 px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500"
+            >
+              关闭
+            </button>
+          </div>
+          <button
+            type="button"
+            onClick={function (e) { e.stopPropagation(); void reload(); }}
+            disabled={loading}
+            className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 disabled:text-zinc-600"
+          >
+            {loading ? "正在刷新..." : "刷新诊断"}
+          </button>
+        </div>
+
+        <div className="p-3 space-y-3">
+          {/* Retry Guidance */}
+          <div className={"rounded border p-2 " + severityBorder(guidance.severity)}>
+            <div className="flex items-center gap-2 mb-1">
+              <span className={"text-[10px] px-1.5 py-0.5 rounded " + severityBadge(guidance.severity)}>
+                {guidance.code}
+              </span>
+              <span className="text-[11px] font-medium text-zinc-300">{guidance.title}</span>
+            </div>
+            <p className="text-[10px] text-zinc-400">{guidance.message}</p>
+            {guidance.actions.length > 0 && (
+              <ul className="mt-1 list-disc list-inside text-[10px] text-zinc-500 space-y-0.5">
+                {guidance.actions.map(function (a, i) { return <li key={i}>{a}</li>; })}
+              </ul>
+            )}
+            {guidance.canRetry && onRegenerate && (
+              <button
+                type="button"
+                onClick={function (e) { e.stopPropagation(); onRegenerate(); }}
+                disabled={isRegenerating}
+                className="mt-2 text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {isRegenerating ? "重新生成中..." : "按建议调整后重新生成"}
+              </button>
+            )}
+          </div>
+
+          {/* Loading / Error */}
+          {loading && <div className="text-[10px] text-zinc-600">正在加载完整诊断...</div>}
+          {detailError && <div className="text-[10px] text-yellow-500">诊断详情加载失败: {detailError}（显示摘要）</div>}
+          {!loaded && !loading && !detailError && <div className="text-[10px] text-zinc-600">点击「加载详情」获取完整诊断</div>}
+
+          {/* Summary Cards */}
+          <Section title="概览">
+            <DiagRow label="RH Status" value={d?.status ?? clip.status} />
+            <DiagRow label="Clip Status" value={clip.status} />
+            <DiagRow label="Output Node" value={d?.outputNodeId} />
+            <DiagRow label="Output Type" value={d?.outputType} />
+            <DiagRow label="Task Cost Time" value={d?.taskCostTime ? d.taskCostTime + "s" : null} />
+            <DiagRow label="Last Polled" value={formatTime(d?.lastPolledAt)} />
+            <DiagRow label="Completed" value={formatTime(d?.completedAt)} />
+            <DiagRow label="taskId" value={clip.taskId} mono />
+          </Section>
+
+          {/* Copy Buttons */}
+          <Section title="复制">
+            <div className="flex flex-wrap gap-1.5">
+              <DiagnosticsCopyButton label="复制 taskId" value={clip.taskId} />
+              <DiagnosticsCopyButton label="复制错误摘要" value={errorSummary} />
+              <DiagnosticsCopyButton label="复制 failedReason" value={failedReasonFormatted.pretty} />
+              <DiagnosticsCopyButton label="复制 promptTips" value={promptTipsFormatted.pretty} />
+              <DiagnosticsCopyButton label="复制完整诊断" value={fullJson} />
+            </div>
+          </Section>
+
+          {/* Usage */}
+          {d?.usage && (
+            <Section title="Usage">
+              <DiagRow label="consumeMoney" value={prettyJson((d.usage as any).consumeMoney)} mono />
+              <DiagRow label="consumeCoins" value={prettyJson((d.usage as any).consumeCoins)} mono />
+              <DiagRow label="thirdPartyConsumeMoney" value={prettyJson((d.usage as any).thirdPartyConsumeMoney)} mono />
+              <DiagRow label="taskCostTime" value={d.taskCostTime ? d.taskCostTime + "s" : null} />
+            </Section>
+          )}
+
+          {/* Results */}
+          {Array.isArray(d?.results) && d!.results!.length > 0 && (
+            <Section title={"Results (" + d!.results!.length + ")"}>
+              {(d!.results!).map(function (r, i) {
+                return (
+                  <div key={i} className="rounded bg-zinc-900/60 p-1.5 text-[10px] space-y-0.5">
+                    <DiagRow label={"#" + (i + 1) + " nodeId"} value={r.nodeId} mono />
+                    <DiagRow label={"outputType"} value={r.outputType} />
+                    <DiagRow label={"url"} value={redactUrl(r.url)} mono />
+                    <DiagRow label={"text"} value={truncateMiddle(r.text ?? "", 120) || null} />
+                  </div>
+                );
+              })}
+            </Section>
+          )}
+
+          {/* failedReason */}
+          {failedReasonFormatted.pretty && (
+            <Section title="failedReason">
+              <p className="text-[10px] text-zinc-500 mb-1">{failedReasonFormatted.summary}</p>
+              <pre className="max-h-64 overflow-auto rounded bg-zinc-900 p-2 font-mono text-[10px] text-zinc-400 break-all whitespace-pre-wrap">
+                {failedReasonFormatted.pretty}
+              </pre>
+            </Section>
+          )}
+
+          {/* promptTips */}
+          {promptTipsFormatted.pretty && (
+            <Section title="promptTips">
+              <pre className="max-h-64 overflow-auto rounded bg-zinc-900 p-2 font-mono text-[10px] text-zinc-400 break-all whitespace-pre-wrap">
+                {promptTipsFormatted.pretty}
+              </pre>
+            </Section>
+          )}
+
+          {/* Bottom spacing */}
+          <div className="h-4" />
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <h3 className="text-[11px] font-medium text-zinc-400 mb-1">{title}</h3>
+      {children}
+    </div>
+  );
+}
+
+function DiagRow({ label, value, mono }: { label: string; value?: string | null; mono?: boolean }) {
+  if (!value) return null;
+  return (
+    <div className="grid grid-cols-[120px_1fr] gap-2 text-[10px]">
+      <span className="text-zinc-600">{label}</span>
+      <span className={mono ? "font-mono text-zinc-400 break-all" : "text-zinc-400 break-words"}>{value}</span>
+    </div>
+  );
+}
+
+function formatTime(value?: string | null): string | null {
+  if (!value) return null;
+  var date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString();
+}
