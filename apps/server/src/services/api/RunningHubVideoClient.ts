@@ -34,6 +34,13 @@ export interface RunningHubTaskResult {
   text?: string | null;
 }
 
+export interface RunningHubTaskUsage {
+  consumeMoney?: string | number | null;
+  consumeCoins?: string | number | null;
+  taskCostTime?: string | number | null;
+  thirdPartyConsumeMoney?: string | number | null;
+}
+
 export interface SubmitResponse {
   taskId: string;
 }
@@ -41,10 +48,15 @@ export interface SubmitResponse {
 export type TaskStatus = "QUEUED" | "RUNNING" | "SUCCESS" | "FAILED";
 
 export interface QueryResponse {
+  taskId?: string;
   status: TaskStatus;
-  results?: RunningHubTaskResult[];
+  errorCode?: string;
   errorMessage?: string;
   failedReason?: unknown;
+  usage?: RunningHubTaskUsage;
+  results?: RunningHubTaskResult[];
+  clientId?: string;
+  promptTips?: string;
 }
 
 export interface UploadResponse {

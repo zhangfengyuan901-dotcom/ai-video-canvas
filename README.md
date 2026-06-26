@@ -92,6 +92,28 @@ RUNNINGHUB_UPLOAD_URL=https://www.runninghub.cn/openapi/v2/media/upload/binary
 | 音频 1-3 | 27, 28, 29 |
 | 参数 | nodeId=1 |
 
+
+### RunningHub 诊断信息持久化
+
+视频生成任务完成后，后端会保存 RunningHub 返回的诊断信息到 `video_clips`：
+
+| 字段 | 说明 |
+| --- | --- |
+| `runninghub_status` | RunningHub 原始任务状态 |
+| `runninghub_error_code` | RunningHub 错误码 |
+| `runninghub_error_message` | RunningHub 错误信息 |
+| `runninghub_failed_reason_json` | RunningHub failedReason 原始 JSON |
+| `runninghub_usage_json` | RunningHub usage 原始 JSON |
+| `runninghub_results_json` | RunningHub results 原始 JSON |
+| `runninghub_prompt_tips` | ComfyUI prompt 校验信息 |
+| `runninghub_output_node_id` | 选中的输出节点 ID |
+| `runninghub_output_type` | 选中的输出类型，如 mp4 |
+| `runninghub_task_cost_time` | RunningHub 返回的任务耗时 |
+| `last_polled_at` | 最近一次轮询时间 |
+| `completed_at` | 任务完成时间 |
+
+这些字段用于排查工作流失败、确认输出节点和分析任务消耗。
+
 ## 目录结构
 
 ```
@@ -116,3 +138,4 @@ ai-video-canvas/
 - Phase 4: 视频生成 — RunningHub AI App 提交、轮询、下载、多版本
 - Phase 5: 重生成覆盖 — 单片段重生成、版本管理
 - Phase 6: 导出 — FFmpeg concat 拼接
+- Phase 4+: 诊断持久化 — 保存 RunningHub 任务状态、usage、results、轮询记录

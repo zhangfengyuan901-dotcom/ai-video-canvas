@@ -16,6 +16,10 @@ import {
   hasApiKey,
 } from "./api/RunningHubVideoClient.js";
 import { existsSync } from "node:fs";
+import {
+  buildRunningHubDiagnostics,
+  pickPrimaryRunningHubResult,
+} from "./video/RunningHubDiagnosticsService.js";
 import type { VideoClip } from "@ai-video-canvas/shared";
 
 // ---- 类型 ---------------------------------------------------------------
@@ -125,6 +129,7 @@ export async function generateForScene(
     version,
     prompt,
     taskId,
+    runninghubStatus: "SUBMITTED",
     localPath,
     inputPanelIdsJson: JSON.stringify(inputPanelIds),
     duration: scene.duration,
