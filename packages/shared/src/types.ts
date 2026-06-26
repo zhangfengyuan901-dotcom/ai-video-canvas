@@ -119,6 +119,17 @@ export interface RunningHubClipDiagnostics {
   lastPolledAt?: string | null;
   completedAt?: string | null;
 }
+
+export interface VideoClipDiagnosticsDetail {
+  clipId: string;
+  projectId: string;
+  sceneId: string;
+  version: number;
+  status: ClipStatus;
+  taskId?: string | null;
+  diagnostics: RunningHubClipDiagnostics;
+}
+
 // ---- VideoClip ---------------------------------------------------------
 
 export type ClipStatus = "queued" | "running" | "ready" | "failed";

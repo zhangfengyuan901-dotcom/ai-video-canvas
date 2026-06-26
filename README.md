@@ -146,6 +146,9 @@ GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
 
 前端视频版本区会显示 RunningHub 诊断摘要，可展开查看任务 ID、错误码、输出节点、输出类型、耗时、最近轮询时间和失败原因摘要。
 
+前端诊断面板默认读取列表接口返回的 summary diagnostics；当用户展开「查看诊断」时，会调用 `/diagnostics` detail endpoint 加载完整 `usage / results / failedReason / promptTips`。
+
+
 
 这些字段用于排查工作流失败、确认输出节点和分析任务消耗。
 
