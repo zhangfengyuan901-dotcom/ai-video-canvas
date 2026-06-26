@@ -161,7 +161,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <span className="text-xs font-medium text-zinc-400 tracking-wide">故事板 · 三宫格</span>
+        <span className="text-xs font-medium text-zinc-400 tracking-wide">三图素材</span>
         {currentProject && (
           <button
             onClick={loadPanels}
@@ -180,7 +180,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
               : "bg-blue-600 hover:bg-blue-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500"
           }`}
         >
-          {isGeneratingGlob ? `生成中... ${jobProgress}%` : panels.length > 0 ? "重新生成" : "生成故事板"}
+          {isGeneratingGlob ? `生成中... ${jobProgress}%` : panels.length > 0 ? "重生三图" : "生成三图"}
         </button>
       </div>
 
@@ -231,7 +231,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
               {!panel && (
                 <div className="h-full flex items-center justify-center">
                   <span className="text-xs text-zinc-600">
-                    {isGeneratingGlob ? "生成中..." : "点击「生成故事板」"}
+                    {isGeneratingGlob ? "生成中..." : "点击「生成三图」"}
                   </span>
                 </div>
               )}

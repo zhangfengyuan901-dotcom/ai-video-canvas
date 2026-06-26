@@ -72,7 +72,20 @@ export async function storyboardRoutes(app: FastifyInstance) {
 
   app.get<{ Params: { projectId: string; sceneId: string } }>(
     "/projects/:projectId/scenes/:sceneId/panels",
-    async (request) => {
+    async (request, reply) => {
+      const scene = db
+        .select()
+        .from(scenes)
+        .where(eq(scenes.id, request.params.sceneId))
+        .get();
+
+      if (!scene || scene.projectId !== request.params.projectId) {
+        return reply.status(404).send({
+          success: false,
+          error: "Scene not found for this project",
+        });
+      }
+
       const rows = db
         .select()
         .from(storyboardPanels)

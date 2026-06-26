@@ -6,6 +6,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useApi } from "../../hooks/useApi";
+import { useVideoClips } from "../../hooks/useVideoClips";
 import TimelineItem from "./TimelineItem";
 
 interface TimelineTrackProps {
@@ -23,6 +24,7 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   const reorderScenes = useProjectStore((s) => s.reorderScenes);
   const isGeneratingVideo = useProjectStore((s) => s.isGeneratingVideo);
   const { post, get } = useApi();
+  const videoClips = useVideoClips();
 
   const [selectedClipId, setSelectedClipId] = useState<Record<string, string>>({});
   const [videoJobId, setVideoJobId] = useState<string | null>(null);
@@ -36,9 +38,8 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
     const project = useProjectStore.getState().currentProject;
     if (!project) return;
     try {
-      const data = await get<any[]>(`/projects/${project.id}/videos`);
-      useProjectStore.getState().setAllClips(data as any);
-      // 从 isCurrent 标记初始化选中版本（持久化）
+      const data = await videoClips.fetchClips();
+      if (!data) return;
       const currentIds: Record<string, string> = {};
       for (const clip of data) {
         if (clip.isCurrent) {
@@ -49,7 +50,7 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
     } catch {
       // silent
     }
-  }, [get]);
+  }, [videoClips.fetchClips]);
 
   // Fetch on mount / project id change
   useEffect(() => {
@@ -158,12 +159,19 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
     const project = useProjectStore.getState().currentProject;
     if (!project) return;
 
-    // 乐观更新，让用户立即看到切换
     setSelectedClipId((prev) => ({ ...prev, [sceneId]: clipId }));
 
     try {
-      await post(`/projects/${project.id}/scenes/${sceneId}/videos/${clipId}/use-version`);
-      await fetchClips();
+      const data = await videoClips.selectVersion(sceneId, clipId);
+      if (data) {
+        const currentIds: Record<string, string> = {};
+        for (const clip of data) {
+          if (clip.isCurrent) {
+            currentIds[clip.sceneId] = clip.id;
+          }
+        }
+        setSelectedClipId(currentIds);
+      }
     } catch (err) {
       console.error("Use version failed:", err);
       await fetchClips();

@@ -4,8 +4,7 @@
 
 import { useProjectStore } from "../../stores/projectStore";
 import { useApi } from "../../hooks/useApi";
-import PanelGrid from "./PanelGrid";
-import SceneInspector from "./SceneInspector";
+import SceneCard from "./SceneCard";
 import { useCallback, useState } from "react";
 
 export default function SceneList() {
@@ -53,79 +52,14 @@ export default function SceneList() {
         {scenes.map((scene) => {
           const isSelected = selectedSceneId === scene.id;
           return (
-            <div
+            <SceneCard
               key={scene.id}
-              onClick={() => selectScene(isSelected ? null : scene.id)}
-              className={`rounded-lg border p-4 cursor-pointer transition-colors ${
-                isSelected
-                  ? "border-blue-600 bg-blue-600/5"
-                  : "border-zinc-800 bg-zinc-900 hover:border-zinc-700"
-              }`}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-zinc-500 font-mono">#{scene.order}</span>
-                <span
-                  className={`text-[10px] px-1.5 py-0.5 rounded ${
-                    scene.status === "draft"
-                      ? "bg-zinc-800 text-zinc-500"
-                      : scene.status === "storyboard_ready"
-                        ? "bg-green-600/20 text-green-400"
-                        : scene.status === "video_ready"
-                          ? "bg-blue-600/20 text-blue-400"
-                          : "bg-zinc-800 text-zinc-500"
-                  }`}
-                >
-                  {scene.status}
-                </span>
-              </div>
-
-              <h4 className="font-medium text-zinc-200 text-sm mb-1">{scene.title}</h4>
-              <p className="text-xs text-zinc-500 line-clamp-2 mb-2">{scene.summary}</p>
-
-              {/* Meta */}
-              <div className="flex flex-wrap gap-1.5">
-                {scene.shotSize && (
-                  <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
-                    {scene.shotSize}
-                  </span>
-                )}
-                {scene.cameraMovement && (
-                  <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
-                    {scene.cameraMovement}
-                  </span>
-                )}
-                {scene.location && (
-                  <span className="text-[10px] bg-zinc-800 text-zinc-400 px-1.5 py-0.5 rounded">
-                    {scene.location}
-                  </span>
-                )}
-                <span className="text-[10px] bg-zinc-800 text-zinc-500 px-1.5 py-0.5 rounded">
-                  {scene.duration}s
-                </span>
-              </div>
-
-              {/* Visual desc preview */}
-              {scene.visualDescription && (
-                <p className="text-[10px] text-zinc-600 mt-2 line-clamp-1 italic">
-                  {scene.visualDescription}
-                </p>
-              )}
-              {/* PanelGrid for selected scene */}
-              {isSelected && (
-                <>
-                  <PanelGrid sceneId={scene.id} />
-                  <details className="mt-4" open>
-                    <summary className="text-xs text-zinc-500 cursor-pointer select-none hover:text-zinc-400 font-medium tracking-wide">
-                      镜头编辑器 ▼
-                    </summary>
-                    <div className="mt-2">
-                      <SceneInspector scene={scene} />
-                    </div>
-                  </details>
-                </>
-              )}
-            </div>
+              scene={scene}
+              isSelected={isSelected}
+              saving={savingId === scene.id}
+              onSelect={() => selectScene(isSelected ? null : scene.id)}
+              onFieldChange={handleFieldChange}
+            />
           );
         })}
       </div>
