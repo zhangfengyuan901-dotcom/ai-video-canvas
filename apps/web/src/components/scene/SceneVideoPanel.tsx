@@ -1,5 +1,5 @@
 // =========================================================================
-// SceneVideoPanel — Individual scene video version panel
+// SceneVideoPanel -- Individual scene video version panel
 // Display current video, generate video, switch versions
 // =========================================================================
 
@@ -103,7 +103,7 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
     try {
       var data = await selectVersion(sceneId, next.id);
       if (data) {
-        // Rebuild selectedClipId — handled by fetchClips inside selectVersion
+        // Rebuild selectedClipId -- handled by fetchClips inside selectVersion
         // The store's clipsByScene is already updated
       }
     } catch (err) {

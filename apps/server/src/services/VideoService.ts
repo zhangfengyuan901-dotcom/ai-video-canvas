@@ -1,5 +1,5 @@
 // =========================================================================
-// VideoService — Video generation orchestration + background polling
+// VideoService -- Video generation orchestration + background polling
 // Multi-version: each generation creates a new record, preserving history
 // =========================================================================
 

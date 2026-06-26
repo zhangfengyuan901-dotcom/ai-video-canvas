@@ -1,5 +1,5 @@
-﻿// =========================================================================
-// Video API Routes — Phase 4: Image-to-video
+// =========================================================================
+// Video API Routes -- Phase 4: Image-to-video
 // =========================================================================
 
 import { FastifyInstance } from "fastify";
@@ -131,7 +131,7 @@ export async function videoRoutes(app: FastifyInstance) {
       },
   );
 
-  // ---- 5. POST /use-version — Persist current version selection --------------------------
+  // ---- 5. POST /use-version -- Persist current version selection --------------------------
 
   app.post<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
     "/projects/:projectId/scenes/:sceneId/videos/:clipId/use-version",
@@ -165,7 +165,7 @@ export async function videoRoutes(app: FastifyInstance) {
   );
 
 
-  // ---- 6. POST /retry — Safe retry for failed clips ---------------------------------
+  // ---- 6. POST /retry -- Safe retry for failed clips ---------------------------------
   // POST /api/projects/:projectId/scenes/:sceneId/videos/:clipId/retry
 
   app.post<{ Params: { projectId: string; sceneId: string; clipId: string } }>(

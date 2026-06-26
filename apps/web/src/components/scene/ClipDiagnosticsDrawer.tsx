@@ -1,5 +1,5 @@
 // =========================================================================
-// ClipDiagnosticsDrawer — Right-side diagnostics drawer
+// ClipDiagnosticsDrawer -- Right-side diagnostics drawer
 // Full RunningHub diagnostics display, including retry guidance, copy buttons,
 // usage, results, failedReason, promptTips, etc.
 // =========================================================================
@@ -78,7 +78,7 @@ export default function ClipDiagnosticsDrawer({
             <div>
               <h2 className="text-sm font-medium text-zinc-200">RunningHub Diagnostics</h2>
               <p className="text-[10px] text-zinc-500 mt-0.5">
-                Clip v{clip.version} · {clip.status}
+                Clip v{clip.version} | {clip.status}
               </p>
             </div>
             <button
@@ -160,7 +160,7 @@ export default function ClipDiagnosticsDrawer({
               {clip.retrySource && (
                 <DiagRow
                   label="Retry Of"
-                  value={"v" + clip.retrySource.version + " · " + clip.retrySource.status + " · " + clip.retrySource.id}
+                  value={"v" + clip.retrySource.version + " | " + clip.retrySource.status + " | " + clip.retrySource.id}
                   mono
                 />
               )}
@@ -180,7 +180,7 @@ export default function ClipDiagnosticsDrawer({
                     {clip.retryChildren.map(function (child) {
                       return (
                         <div key={child.id} className="font-mono text-zinc-400 break-all">
-                          v{child.version} · {child.status} · {child.id}
+                          v{child.version} | {child.status} | {child.id}
                         </div>
                       );
                     })}

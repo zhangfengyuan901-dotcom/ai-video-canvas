@@ -99,6 +99,14 @@ var dto = read("apps/server/src/services/video/ClipDiagnosticsDto.ts");
 if (!dto.includes("retryOfClipId")) { console.error("[FAIL] ClipDiagnosticsDto missing retryOfClipId"); ok = false; }
 if (ok) console.log("[PASS] ClipDiagnosticsDto has retry mapping");
 
+function assertAsciiOnly(name: string, content: string) {
+  var match = content.match(/[^\x00-\x7F]/);
+  if (match) {
+    console.error("[FAIL]", name, "contains non-ASCII character:", JSON.stringify(match[0]));
+    ok = false;
+  }
+}
+
 // ---- Check 10: No mojibake / Ark ------------------------------------------
 
 var badPatterns = ["\uFFFD", "鈥�", "鐢熸", "瑙嗛", "鍒锋", "閲嶆", "Ark", "ARK_", "VIDEO_PROVIDER", "VideoProviderService"];
@@ -110,6 +118,7 @@ for (var fi = 0; fi < filesToCheck.length; fi++) {
   for (var bp of badPatterns) {
     if (content.includes(bp)) { console.error("[FAIL]", name, "contains forbidden pattern:", bp); ok = false; }
   }
+  assertAsciiOnly(name, content);
 }
 if (ok) console.log("[PASS] No mojibake or Ark patterns found");
 

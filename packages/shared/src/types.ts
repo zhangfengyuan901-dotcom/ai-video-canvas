@@ -1,5 +1,5 @@
 // =========================================================================
-// @ai-video-canvas/shared — Shared types for frontend and backend
+// @ai-video-canvas/shared -- Shared types for frontend and backend
 // =========================================================================
 
 // ---- Project -----------------------------------------------------------
@@ -10,7 +10,7 @@ export interface Project {
   description?: string;
   aspectRatio: "16:9" | "9:16";
   resolution: "720p" | "1080p" | "4k";
-  defaultSceneDuration: number; // Default 8
+  defaultSceneDuration: number; // Default: 8
   rootPath: string;
   createdAt: string;
   updatedAt: string;
@@ -55,7 +55,7 @@ export interface Scene {
   motionPrompt: string;
   dialogue?: string;
   audioEffects?: string;
-  duration: number; // Default 8
+  duration: number; // Default: 8
   status: SceneStatus;
   locked: boolean;
   createdAt: string;

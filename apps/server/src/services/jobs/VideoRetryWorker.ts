@@ -1,6 +1,6 @@
 // =========================================================================
-// VideoRetryWorker — 异步失败视频重试任务
-// 通过 JobService 异步创建 retry clip，不阻塞 HTTP 请求。
+// VideoRetryWorker - async failed video retry worker
+// Creates retry clips via JobService async, without blocking HTTP requests.
 // =========================================================================
 
 import { retryFailedClip } from "../VideoService.js";
