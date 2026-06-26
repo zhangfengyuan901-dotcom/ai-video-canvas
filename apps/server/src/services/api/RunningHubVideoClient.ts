@@ -6,11 +6,8 @@
 import { readFileSync, createWriteStream, existsSync } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
+import { getEffectiveApiConfig } from "../settings/ApiConfigService.js";
 
-const API_KEY = process.env.RUNNINGHUB_API_KEY ?? "";
-const SUBMIT_URL = "https://www.runninghub.cn/openapi/v2/rhart-video-v3.1-fast/image-to-video";
-const QUERY_URL = "https://www.runninghub.cn/openapi/v2/query";
-const UPLOAD_URL = "https://www.runninghub.cn/openapi/v2/media/upload/binary";
 
 // ---- 类型 ---------------------------------------------------------------
 
@@ -42,16 +39,18 @@ export function fileToDataUri(filePath: string, mimeType = "image/png"): string 
 // 推荐方式：上传后拿 download_url 传给图生视频接口，避免 Base64 请求体过大
 
 export async function uploadBinary(filePath: string): Promise<string> {
-  if (!API_KEY) {
-    throw new Error("RUNNINGHUB_API_KEY is not configured in .env");
+  const config = getEffectiveApiConfig().runninghub;
+  if (!config.apiKey) {
+    throw new Error("RunningHub API Key 未配置，请先在 API 配置中设置");
   }
 
+  const uploadUrl = config.uploadUrl || "https://www.runninghub.cn/openapi/v2/media/upload/binary";
   const buffer = readFileSync(filePath);
 
-  const response = await fetch(UPLOAD_URL, {
+  const response = await fetch(uploadUrl, {
     method: "POST",
     headers: {
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${config.apiKey}`,
       "Content-Type": "application/octet-stream",
     },
     body: buffer,
@@ -86,15 +85,17 @@ export async function submitVideoTask(
   resolution: string = "720p",
   duration: string = "8",
 ): Promise<string> {
-  if (!API_KEY) {
-    throw new Error("RUNNINGHUB_API_KEY is not configured in .env");
+  const config = getEffectiveApiConfig().runninghub;
+  if (!config.apiKey) {
+    throw new Error("RunningHub API Key 未配置，请先在 API 配置中设置");
   }
 
-  const response = await fetch(SUBMIT_URL, {
+  const submitUrl = config.submitUrl || "https://www.runninghub.cn/openapi/v2/rhart-video-v3.1-fast/image-to-video";
+  const response = await fetch(submitUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify({
       prompt,
@@ -122,15 +123,17 @@ export async function submitVideoTask(
 // ---- 查询任务状态 --------------------------------------------------------
 
 export async function queryTaskStatus(taskId: string): Promise<QueryResponse> {
-  if (!API_KEY) {
-    throw new Error("RUNNINGHUB_API_KEY is not configured in .env");
+  const config = getEffectiveApiConfig().runninghub;
+  if (!config.apiKey) {
+    throw new Error("RunningHub API Key 未配置，请先在 API 配置中设置");
   }
 
-  const response = await fetch(QUERY_URL, {
+  const queryUrl = config.queryUrl || "https://www.runninghub.cn/openapi/v2/query";
+  const response = await fetch(queryUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify({ taskId }),
   });
@@ -156,5 +159,6 @@ export async function downloadVideo(remoteUrl: string, localPath: string): Promi
 // ---- 检查 API Key 是否可用 ------------------------------------------------
 
 export function hasApiKey(): boolean {
-  return !!API_KEY && API_KEY !== "your_runninghub_key";
+  const config = getEffectiveApiConfig().runninghub;
+  return !!config.apiKey && config.apiKey !== "your_runninghub_key";
 }

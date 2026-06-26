@@ -6,6 +6,7 @@ import { useProjectStore } from "../../stores/projectStore";
 import { useState, useEffect } from "react";
 import { useApi } from "../../hooks/useApi";
 import ExportPreflightModal from "../export/ExportPreflightModal";
+import ApiSettingsPanel from "../settings/ApiSettingsPanel";
 
 export default function TopBar() {
   const currentProject = useProjectStore((s) => s.currentProject);
@@ -16,6 +17,7 @@ export default function TopBar() {
   const [exportFilename, setExportFilename] = useState<string | null>(null);
   const [exportError, setExportError] = useState<string | null>(null);
   const [showPreflight, setShowPreflight] = useState(false);
+  const [showApiSettings, setShowApiSettings] = useState(false);
 
   // ---- Poll export job --------------------------------------------------
 
@@ -137,6 +139,15 @@ export default function TopBar() {
           onConfirm={(allowPartial) => startExport(allowPartial)}
         />
       )}
+      {showApiSettings && (
+        <ApiSettingsPanel onClose={() => setShowApiSettings(false)} />
+      )}
+          <button
+            onClick={() => setShowApiSettings(true)}
+            className="text-xs px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
+          >
+            API 配置
+          </button>
       <span className="text-xs text-zinc-600">Phase 4 · 图生视频</span>
     </header>
   );

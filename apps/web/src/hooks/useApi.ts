@@ -26,6 +26,8 @@ export function useApi() {
   return useMemo(
     () => ({
       get: <T = unknown>(url: string) => request<T>(url),
+      put: <T = unknown>(url: string, body?: unknown) =>
+        request<T>(url, { method: "PUT", body: body ? JSON.stringify(body) : undefined }),
       post: <T = unknown>(url: string, body?: unknown) =>
         request<T>(url, { method: "POST", body: body ? JSON.stringify(body) : undefined }),
       patch: <T = unknown>(url: string, body?: unknown) =>

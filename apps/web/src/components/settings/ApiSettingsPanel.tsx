@@ -1,0 +1,224 @@
+// =========================================================================
+// ApiSettingsPanel — API 配置面板（右侧抽屉）
+// =========================================================================
+
+import { useState, useEffect } from "react";
+import { useApiSettings } from "../../hooks/useApiSettings";
+import type { ApiSettingsStatus } from "../../hooks/useApiSettings";
+
+interface ApiSettingsPanelProps {
+  onClose: () => void;
+}
+
+export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
+  const { getApiSettings, saveApiSettings, checkApiSettings } = useApiSettings();
+
+  const [status, setStatus] = useState<ApiSettingsStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [checkResult, setCheckResult] = useState<{ packy: { configured: boolean; message: string }; runninghub: { configured: boolean; message: string } } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+
+  const [packyKey, setPackyKey] = useState("");
+  const [packyBaseUrl, setPackyBaseUrl] = useState("");
+  const [packyModel, setPackyModel] = useState("");
+  const [clearPackyKey, setClearPackyKey] = useState(false);
+  const [rhKey, setRhKey] = useState("");
+  const [rhSubmitUrl, setRhSubmitUrl] = useState("");
+  const [rhQueryUrl, setRhQueryUrl] = useState("");
+  const [rhUploadUrl, setRhUploadUrl] = useState("");
+  const [clearRhKey, setClearRhKey] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const s = await getApiSettings();
+        setStatus(s);
+        setPackyBaseUrl(s.packy.baseUrl);
+        setPackyModel(s.packy.imageModel);
+        setRhSubmitUrl(s.runninghub.submitUrl);
+        setRhQueryUrl(s.runninghub.queryUrl);
+        setRhUploadUrl(s.runninghub.uploadUrl);
+      } catch {
+        setError("读取配置失败");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [getApiSettings]);
+
+  useEffect(() => {
+    if (!successMsg) return;
+    const t = setTimeout(() => setSuccessMsg(null), 3000);
+    return () => clearTimeout(t);
+  }, [successMsg]);
+
+  async function handleSave() {
+    setError(null); setSuccessMsg(null); setSaving(true);
+    try {
+      const payload: any = {
+        packy: { baseUrl: packyBaseUrl.trim() || undefined, imageModel: packyModel.trim() || undefined, apiKey: packyKey.trim() || undefined, clearApiKey: clearPackyKey },
+        runninghub: { apiKey: rhKey.trim() || undefined, clearApiKey: clearRhKey, submitUrl: rhSubmitUrl.trim() || undefined, queryUrl: rhQueryUrl.trim() || undefined, uploadUrl: rhUploadUrl.trim() || undefined },
+      };
+      const result = await saveApiSettings(payload);
+      setStatus(result);
+      setPackyKey(""); setRhKey(""); setClearPackyKey(false); setClearRhKey(false);
+      setSuccessMsg("已保存");
+    } catch {
+      setError("保存失败，请检查配置格式或服务端日志。");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleCheck() {
+    setError(null); setCheckResult(null);
+    try { setCheckResult(await checkApiSettings()); }
+    catch { setError("自检失败"); }
+  }
+
+  async function handleReload() {
+    setCheckResult(null); setError(null); setPackyKey(""); setRhKey("");
+    try {
+      const s = await getApiSettings();
+      setStatus(s);
+      setPackyBaseUrl(s.packy.baseUrl);
+      setPackyModel(s.packy.imageModel);
+      setRhSubmitUrl(s.runninghub.submitUrl);
+      setRhQueryUrl(s.runninghub.queryUrl);
+      setRhUploadUrl(s.runninghub.uploadUrl);
+    } catch { setError("读取配置失败"); }
+  }
+
+  function SourceBadge({ source }: { source: string }) {
+    if (source === "env") return <span className="text-[9px] bg-zinc-700 text-zinc-400 px-1 rounded">ENV</span>;
+    if (source === "stored") return <span className="text-[9px] bg-blue-800/40 text-blue-400 px-1 rounded">本地配置</span>;
+    return null;
+  }
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 w-[460px] bg-zinc-950 border-l border-zinc-800 shadow-xl z-50 flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 shrink-0">
+          <h2 className="text-sm font-semibold text-zinc-200">API 配置</h2>
+          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">&times;</button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
+          {loading ? (
+            <p className="text-xs text-zinc-500">加载中...</p>
+          ) : (
+            <>
+              {error && <div className="text-xs text-red-400 bg-red-600/10 rounded px-3 py-2">{error}</div>}
+              {successMsg && <div className="text-xs text-green-400 bg-green-600/10 rounded px-3 py-2">{successMsg}</div>}
+
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-300">图片生成 API · Packy</span>
+                  <ConfiguredBadge configured={status?.packy.configured ?? false} />
+                  <SourceBadge source={status?.packy.source ?? "missing"} />
+                </div>
+                <label className="block">
+                  <span className="text-[10px] text-zinc-500">Base URL</span>
+                  <input type="text" value={packyBaseUrl} onChange={(e) => setPackyBaseUrl(e.target.value)}
+                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-600" />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-zinc-500">Image Model</span>
+                  <input type="text" value={packyModel} onChange={(e) => setPackyModel(e.target.value)}
+                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-600" />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-zinc-500">API Key</span>
+                  <input type="password" value={packyKey} onChange={(e) => setPackyKey(e.target.value)}
+                    placeholder={status?.packy.configured ? "已配置，留空则不修改" : "请输入 API Key"}
+                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600" />
+                </label>
+                {status?.packy.configured && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={clearPackyKey} onChange={(e) => setClearPackyKey(e.target.checked)} className="accent-red-600" />
+                    <span className="text-[10px] text-zinc-500">清除已保存的密钥</span>
+                  </label>
+                )}
+              </section>
+
+              <hr className="border-zinc-800" />
+
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-zinc-300">视频生成 API · RunningHub</span>
+                  <ConfiguredBadge configured={status?.runninghub.configured ?? false} />
+                  <SourceBadge source={status?.runninghub.source ?? "missing"} />
+                </div>
+                <label className="block">
+                  <span className="text-[10px] text-zinc-500">API Key</span>
+                  <input type="password" value={rhKey} onChange={(e) => setRhKey(e.target.value)}
+                    placeholder={status?.runninghub.configured ? "已配置，留空则不修改" : "请输入 API Key"}
+                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600" />
+                </label>
+                {status?.runninghub.configured && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={clearRhKey} onChange={(e) => setClearRhKey(e.target.checked)} className="accent-red-600" />
+                    <span className="text-[10px] text-zinc-500">清除已保存的密钥</span>
+                  </label>
+                )}
+                <button onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors">
+                  {showAdvanced ? "收起高级设置" : "展开高级设置"}
+                </button>
+                {showAdvanced && (
+                  <div className="space-y-3 pl-2 border-l border-zinc-800">
+                    {[{ l: "Submit URL", v: rhSubmitUrl, s: setRhSubmitUrl }, { l: "Query URL", v: rhQueryUrl, s: setRhQueryUrl }, { l: "Upload URL", v: rhUploadUrl, s: setRhUploadUrl }].map(({ l, v, s }) => (
+                      <label key={l} className="block">
+                        <span className="text-[10px] text-zinc-500">{l}</span>
+                        <input type="text" value={v} onChange={(e) => s(e.target.value)}
+                          className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-600" />
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              <hr className="border-zinc-800" />
+
+              {checkResult && (
+                <div className="space-y-1">
+                  <p className={`text-xs ${checkResult.packy.configured ? "text-green-400" : "text-red-400"}`}>
+                    Packy: {checkResult.packy.message}
+                  </p>
+                  <p className={`text-xs ${checkResult.runninghub.configured ? "text-green-400" : "text-red-400"}`}>
+                    RunningHub: {checkResult.runninghub.message}
+                  </p>
+                </div>
+              )}
+
+              <p className="text-[10px] text-zinc-600 text-center">后续会在这里接入更多模型与服务配置。</p>
+            </>
+          )}
+        </div>
+
+        <div className="border-t border-zinc-800 px-5 py-3 flex items-center gap-2 shrink-0">
+          <button onClick={handleReload} className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">重新读取</button>
+          <button onClick={handleCheck} className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">自检</button>
+          <div className="flex-1" />
+          <button onClick={handleSave} disabled={saving}
+            className="text-xs px-4 py-1.5 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500">
+            {saving ? "保存中..." : "保存配置"}
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ConfiguredBadge({ configured }: { configured: boolean }) {
+  return (
+    <span className={`text-[10px] px-1.5 py-0.5 rounded ${configured ? "bg-green-600/20 text-green-400" : "bg-red-600/20 text-red-400"}`}>
+      {configured ? "已配置" : "未配置"}
+    </span>
+  );
+}

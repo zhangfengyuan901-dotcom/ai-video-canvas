@@ -6,10 +6,9 @@
 import { createWriteStream } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
+import { getEffectiveApiConfig } from "../settings/ApiConfigService.js";
 
 const BASE_URL = process.env.PACKY_BASE_URL ?? "https://www.packyapi.com/v1";
-const API_KEY = process.env.PACKY_SORA_API_KEY ?? ""; // 必须使用 Sora 分组令牌
-const MODEL = process.env.PACKY_IMAGE_MODEL ?? "gpt-image-2";
 
 // ---- 图片尺寸映射 ------------------------------------------------------
 
@@ -30,20 +29,23 @@ export async function generateImage(
   prompt: string,
   aspectRatio: "16:9" | "9:16" = "16:9",
 ): Promise<GenerationResult> {
-  if (!API_KEY || API_KEY === "your_sora_group_key") {
-    throw new Error("PACKY_SORA_API_KEY is not configured in .env");
+  const config = getEffectiveApiConfig().packy;
+  if (!config.apiKey || config.apiKey === "your_sora_group_key") {
+    throw new Error("Packy Sora API Key 未配置，请先在 API 配置中设置");
   }
 
+  const baseUrl = config.baseUrl || "https://www.packyapi.com/v1";
+  const model = config.imageModel || "gpt-image-2";
   const size = getSize(aspectRatio);
 
-  const response = await fetch(`${BASE_URL}/images/generations`, {
+  const response = await fetch(`${baseUrl}/images/generations`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model,
       prompt,
       size,
       quality: "medium",
