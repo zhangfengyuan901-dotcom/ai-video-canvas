@@ -5,6 +5,7 @@
 import "./load-env.js";
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import { projectRoutes } from "./routes/projects.js";
 import { chatRoutes } from "./routes/chat.js";
 import { storyboardRoutes } from "./routes/storyboard.js";
@@ -23,6 +24,13 @@ const app = Fastify({ logger: true });
 await app.register(cors, {
   origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
   methods: ["GET", "POST", "PATCH", "DELETE"],
+});
+
+await app.register(multipart, {
+  limits: {
+    fileSize: 20 * 1024 * 1024,
+    files: 1,
+  },
 });
 
 // ---- Routes ------------------------------------------------------------

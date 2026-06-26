@@ -66,6 +66,7 @@ export interface Scene {
 
 export type PanelRole = "start" | "middle" | "end";
 export type PanelStatus = "queued" | "generating" | "ready" | "failed";
+export type PanelSourceType = "ai" | "upload";
 
 export interface StoryboardPanel {
   id: string;
@@ -77,6 +78,9 @@ export interface StoryboardPanel {
   revisedPrompt?: string;
   remoteUrl?: string;
   localPath?: string;
+  sourceType?: PanelSourceType;
+  originalFilename?: string;
+  mimeType?: string;
   width?: number;
   height?: number;
   status: PanelStatus;

@@ -9,13 +9,25 @@ import { FastifyInstance } from "fastify";
           import { projects, scenes, storyboardPanels } from "../db/schema.js";
           import { generatePanelPrompts } from "../services/llm/PanelPromptService.js";
           import { generateAndDownload } from "../services/api/PackyImageClient.js";
-          import { getPanelPath, getStripPath } from "../services/storage/AssetStorageService.js";
+          import { getPanelPath, getStripPath, getUploadedPanelPath } from "../services/storage/AssetStorageService.js";
+          import type { UploadImageExt } from "../services/storage/AssetStorageService.js";
+          import { pipeline } from "node:stream/promises";
+          import { createWriteStream } from "node:fs";
           import { existsSync, readFileSync } from "node:fs";
           import { generateStoryboardSchema } from "@ai-video-canvas/shared";
           import type { StyleBible, PanelRole, PanelStatus, StoryboardPanel } from "@ai-video-canvas/shared";
           import { composeStoryboardStrip } from "../services/storage/StripService.js";
 import { createJob } from "../services/jobs/JobService.js";
 import { startStoryboardWorker } from "../services/jobs/StoryboardWorker.js";
+
+// ---- 辅助：MIME 到扩展名映射 ---------------------------------------------
+
+function extFromMime(mimeType: string): UploadImageExt | null {
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/webp") return "webp";
+  return null;
+}
 
 export async function storyboardRoutes(app: FastifyInstance) {
   // ---- 1. Generate storyboard panels for scenes (async job) ------------
@@ -173,10 +185,185 @@ export async function storyboardRoutes(app: FastifyInstance) {
         return reply.status(404).send({ success: false, error: "Image not found on disk" });
       }
 
-      return reply.type("image/png").send(readFileSync(panel.localPath));
+      return reply.type(panel.mimeType ?? "image/png").send(readFileSync(panel.localPath));
     },
   );
-  // ---- 5. Serve scene preview image --------------------------------------
+  // ---- 5. Upload panel image ---------------------------------------------
+  // POST /api/projects/:projectId/scenes/:sceneId/panels/:panelIndex/upload
+
+  app.post<{ Params: { projectId: string; sceneId: string; panelIndex: string } }>(
+    "/projects/:projectId/scenes/:sceneId/panels/:panelIndex/upload",
+    async (request, reply) => {
+      const panelIndex = parseInt(request.params.panelIndex, 10);
+      if (isNaN(panelIndex) || panelIndex < 0 || panelIndex > 2) {
+        return reply.status(400).send({ success: false, error: "panelIndex must be 0, 1, or 2" });
+      }
+
+      const projectId = request.params.projectId;
+      const sceneId = request.params.sceneId;
+
+      // 校验 scene 归属
+      const scene = db.select().from(scenes).where(eq(scenes.id, sceneId)).get();
+      if (!scene || scene.projectId !== projectId) {
+        return reply.status(404).send({ success: false, error: "Scene not found for this project" });
+      }
+
+      // 读取上传文件
+      const data = await request.file();
+      if (!data) {
+        return reply.status(400).send({ success: false, error: "File is required" });
+      }
+
+      const ext = extFromMime(data.mimetype);
+      if (!ext) {
+        return reply.status(400).send({ success: false, error: "Only PNG, JPEG, and WebP images are supported" });
+      }
+
+      // 查询现有 panel
+      const existing = db
+        .select()
+        .from(storyboardPanels)
+        .where(eq(storyboardPanels.sceneId, sceneId))
+        .all()
+        .find((p) => p.panelIndex === panelIndex);
+
+      const version = existing ? existing.version + 1 : 1;
+      const panelId = existing ? existing.id : uuid();
+      const roleMap: Record<number, string> = { 0: "start", 1: "middle", 2: "end" };
+      const role = roleMap[panelIndex];
+      const prompt = existing ? existing.prompt : "用户上传素材";
+
+      // 写入文件
+      const localPath = getUploadedPanelPath(projectId, sceneId, panelIndex, version, ext);
+      await pipeline(data.file, createWriteStream(localPath));
+
+      const now = new Date().toISOString();
+
+      if (existing) {
+        db.update(storyboardPanels)
+          .set({
+            version,
+            localPath,
+            remoteUrl: null,
+            revisedPrompt: null,
+            status: "ready",
+            sourceType: "upload",
+            originalFilename: data.filename ?? null,
+            mimeType: data.mimetype,
+            error: null,
+            updatedAt: now,
+          })
+          .where(eq(storyboardPanels.id, existing.id))
+          .run();
+      } else {
+        db.insert(storyboardPanels)
+          .values({
+            id: panelId,
+            projectId,
+            sceneId,
+            panelIndex,
+            role,
+            prompt,
+            revisedPrompt: null,
+            remoteUrl: null,
+            localPath,
+            status: "ready",
+            locked: 0,
+            version,
+            sourceType: "upload",
+            originalFilename: data.filename ?? null,
+            mimeType: data.mimetype,
+            error: null,
+            createdAt: now,
+            updatedAt: now,
+          })
+          .run();
+      }
+
+      // 重新检查三张 panel 是否都 ready
+      const allPanels = db
+        .select()
+        .from(storyboardPanels)
+        .where(eq(storyboardPanels.sceneId, sceneId))
+        .all()
+        .filter((p) => p.status === "ready" && p.localPath && existsSync(p.localPath));
+      if (allPanels.length === 3) {
+        db.update(scenes)
+          .set({ status: "storyboard_ready", updatedAt: now })
+          .where(eq(scenes.id, sceneId))
+          .run();
+      }
+
+      const updated = db.select().from(storyboardPanels).where(eq(storyboardPanels.id, panelId)).get();
+      return { success: true, data: updated ? { ...updated, locked: !!updated.locked } : null };
+    },
+  );
+
+  // ---- 6. Clear panel image -----------------------------------------------
+  // DELETE /api/projects/:projectId/scenes/:sceneId/panels/:panelIndex
+
+  app.delete<{ Params: { projectId: string; sceneId: string; panelIndex: string } }>(
+    "/projects/:projectId/scenes/:sceneId/panels/:panelIndex",
+    async (request, reply) => {
+      const panelIndex = parseInt(request.params.panelIndex, 10);
+      if (isNaN(panelIndex) || panelIndex < 0 || panelIndex > 2) {
+        return reply.status(400).send({ success: false, error: "panelIndex must be 0, 1, or 2" });
+      }
+
+      const projectId = request.params.projectId;
+      const sceneId = request.params.sceneId;
+
+      // 校验 scene 归属
+      const scene = db.select().from(scenes).where(eq(scenes.id, sceneId)).get();
+      if (!scene || scene.projectId !== projectId) {
+        return reply.status(404).send({ success: false, error: "Scene not found for this project" });
+      }
+
+      const panel = db
+        .select()
+        .from(storyboardPanels)
+        .where(eq(storyboardPanels.sceneId, sceneId))
+        .all()
+        .find((p) => p.panelIndex === panelIndex);
+
+      if (!panel) {
+        return reply.status(404).send({ success: false, error: "Panel not found" });
+      }
+      if (panel.projectId !== projectId || panel.sceneId !== sceneId) {
+        return reply.status(404).send({ success: false, error: "Panel not found for this project" });
+      }
+
+      const now = new Date().toISOString();
+
+      // 软清空：不删除文件，只重置状态
+      db.update(storyboardPanels)
+        .set({
+          status: "queued",
+          localPath: null,
+          remoteUrl: null,
+          revisedPrompt: null,
+          error: null,
+          sourceType: "ai",
+          originalFilename: null,
+          mimeType: null,
+          updatedAt: now,
+        })
+        .where(eq(storyboardPanels.id, panel.id))
+        .run();
+
+      // 如果 scene 状态是 storyboard_ready，降级为 draft
+      if (scene.status === "storyboard_ready") {
+        db.update(scenes)
+          .set({ status: "draft", updatedAt: now })
+          .where(eq(scenes.id, sceneId))
+          .run();
+      }
+
+      return { success: true, data: { sceneId, panelIndex, status: "queued" } };
+    },
+  );
+
+  // ---- 7. Serve scene preview image --------------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/preview
   // Fallback chain: strip → panel0 → any ready panel → 404
 
@@ -217,7 +404,7 @@ export async function storyboardRoutes(app: FastifyInstance) {
       const fallbackPanel = panel0 ?? panels[0];
 
       if (fallbackPanel?.localPath) {
-        return reply.type("image/png").send(readFileSync(fallbackPanel.localPath));
+        return reply.type(fallbackPanel.mimeType ?? "image/png").send(readFileSync(fallbackPanel.localPath));
       }
 
       // Fallback 4: 全部不可用
@@ -227,7 +414,7 @@ export async function storyboardRoutes(app: FastifyInstance) {
       });
     },
   );
-  // ---- 6. Serve storyboard strip image ----------------------------------
+  // ---- 8. Serve storyboard strip image ----------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/strip
 
   app.get<{ Params: { projectId: string; sceneId: string } }>(

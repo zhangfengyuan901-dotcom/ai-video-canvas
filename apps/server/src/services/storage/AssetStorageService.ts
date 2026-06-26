@@ -41,6 +41,19 @@ export function getPanelPath(projectId: string, sceneId: string, panelIndex: num
   return resolve(dir, `panel-${panelIndex}${suffix}.png`);
 }
 
+export type UploadImageExt = "png" | "jpg" | "jpeg" | "webp";
+
+export function getUploadedPanelPath(
+  projectId: string,
+  sceneId: string,
+  panelIndex: number,
+  version: number,
+  ext: UploadImageExt,
+): string {
+  const dir = ensurePanelDir(projectId, sceneId);
+  return resolve(dir, `panel-${panelIndex}-upload-v${version}.${ext}`);
+}
+
 export function getStripPath(projectId: string, sceneId: string): string {
   const dir = ensurePanelDir(projectId, sceneId);
   return resolve(dir, "storyboard-strip.png");

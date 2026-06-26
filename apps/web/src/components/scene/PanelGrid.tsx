@@ -22,6 +22,8 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<number>(0);
+  const [uploadingPanel, setUploadingPanel] = useState<number | null>(null);
+  const [clearingPanel, setClearingPanel] = useState<number | null>(null);
 
   // Auto-load existing panels when scene first selected
   useEffect(() => {
@@ -109,6 +111,46 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
     }
   }
 
+  // Upload a panel image
+  async function handleUpload(panelIndex: number, file: File | undefined) {
+    if (!file || !currentProject) return;
+    setUploadingPanel(panelIndex);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await fetch(
+        `/api/projects/${currentProject.id}/scenes/${sceneId}/panels/${panelIndex}/upload`,
+        { method: "POST", body: formData },
+      );
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? "上传失败");
+      await loadPanels();
+    } catch (err) {
+      console.error("Upload failed:", err);
+    } finally {
+      setUploadingPanel(null);
+    }
+  }
+
+  // Clear a panel image
+  async function handleClear(panelIndex: number) {
+    if (!currentProject) return;
+    setClearingPanel(panelIndex);
+    try {
+      const res = await fetch(
+        `/api/projects/${currentProject.id}/scenes/${sceneId}/panels/${panelIndex}`,
+        { method: "DELETE" },
+      );
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? "取消失败");
+      await loadPanels();
+    } catch (err) {
+      console.error("Clear failed:", err);
+    } finally {
+      setClearingPanel(null);
+    }
+  }
+
   const roles = [
     { index: 0, label: "起始帧", role: "start" },
     { index: 1, label: "中间帧", role: "middle" },
@@ -151,6 +193,33 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
               key={index}
               className="aspect-video rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden relative group"
             >
+              {/* Upload/clear overlay */}
+              <div className="absolute bottom-1 left-1 right-1 z-20 hidden group-hover:flex gap-1 justify-center">
+                <label className="text-[10px] bg-black/70 hover:bg-black text-white px-1.5 py-0.5 rounded cursor-pointer transition-colors">
+                  {uploadingPanel === index ? "上传中..." : "上传"}
+                  <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    className="hidden"
+                    disabled={uploadingPanel !== null}
+                    onChange={(e) => handleUpload(index, e.target.files?.[0])}
+                  />
+                </label>
+
+                {panel?.status === "ready" && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleClear(index);
+                    }}
+                    disabled={clearingPanel !== null}
+                    className="text-[10px] bg-red-700/80 hover:bg-red-600 text-white px-1.5 py-0.5 rounded transition-colors disabled:opacity-50"
+                  >
+                    {clearingPanel === index ? "取消中..." : "取消"}
+                  </button>
+                )}
+              </div>
+
               {/* Panel label */}
               <div className="absolute top-1.5 left-1.5 z-10">
                 <span className="text-[10px] bg-black/60 text-zinc-300 px-1.5 py-0.5 rounded">
@@ -188,7 +257,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
 
               {panel?.status === "ready" && (
                 <img
-                  src={`/api/projects/${currentProject?.id}/scenes/${sceneId}/panels/${panel.panelIndex}/image`}
+                  src={`/api/projects/${currentProject?.id}/scenes/${sceneId}/panels/${panel.panelIndex}/image?v=${panel.version}`}
                   alt={`Panel ${index} (${role})`}
                   className="h-full w-full object-cover"
                   loading="lazy"
