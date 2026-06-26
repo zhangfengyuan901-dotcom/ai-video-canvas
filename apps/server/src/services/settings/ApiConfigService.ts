@@ -64,7 +64,9 @@ export interface ApiConfigStatus {
 
 const DEFAULT_PACKY_BASE_URL = "https://www.packyapi.com/v1";
 const DEFAULT_PACKY_IMAGE_MODEL = "gpt-image-2";
-const DEFAULT_RUNNINGHUB_SUBMIT_URL = "https://www.runninghub.cn/openapi/v2/rhart-video-v3.1-fast/image-to-video";
+const DEFAULT_RUNNINGHUB_AI_APP_ID = "2037453629342355457";
+const DEFAULT_RUNNINGHUB_SUBMIT_URL =
+  `https://www.runninghub.cn/openapi/v2/run/ai-app/${DEFAULT_RUNNINGHUB_AI_APP_ID}`;
 const DEFAULT_RUNNINGHUB_QUERY_URL = "https://www.runninghub.cn/openapi/v2/query";
 const DEFAULT_RUNNINGHUB_UPLOAD_URL = "https://www.runninghub.cn/openapi/v2/media/upload/binary";
 
@@ -124,9 +126,18 @@ export function getEffectiveApiConfig(): {
     runninghub: {
       enabled: stored.runninghub?.enabled ?? true,
       apiKey: rhApiKey,
-      submitUrl: stored.runninghub?.submitUrl || DEFAULT_RUNNINGHUB_SUBMIT_URL,
-      queryUrl: stored.runninghub?.queryUrl || DEFAULT_RUNNINGHUB_QUERY_URL,
-      uploadUrl: stored.runninghub?.uploadUrl || DEFAULT_RUNNINGHUB_UPLOAD_URL,
+      submitUrl:
+        stored.runninghub?.submitUrl ||
+        process.env.RUNNINGHUB_SUBMIT_URL ||
+        DEFAULT_RUNNINGHUB_SUBMIT_URL,
+      queryUrl:
+        stored.runninghub?.queryUrl ||
+        process.env.RUNNINGHUB_QUERY_URL ||
+        DEFAULT_RUNNINGHUB_QUERY_URL,
+      uploadUrl:
+        stored.runninghub?.uploadUrl ||
+        process.env.RUNNINGHUB_UPLOAD_URL ||
+        DEFAULT_RUNNINGHUB_UPLOAD_URL,
     },
   };
 }
@@ -155,9 +166,18 @@ export function getSafeApiConfig(): ApiConfigStatus {
       configured: !!rhKey,
       source: rhStoredKey ? "stored" : rhEnvKey ? "env" : "missing",
       maskedKey: maskSecret(rhKey),
-      submitUrl: stored.runninghub?.submitUrl || DEFAULT_RUNNINGHUB_SUBMIT_URL,
-      queryUrl: stored.runninghub?.queryUrl || DEFAULT_RUNNINGHUB_QUERY_URL,
-      uploadUrl: stored.runninghub?.uploadUrl || DEFAULT_RUNNINGHUB_UPLOAD_URL,
+      submitUrl:
+        stored.runninghub?.submitUrl ||
+        process.env.RUNNINGHUB_SUBMIT_URL ||
+        DEFAULT_RUNNINGHUB_SUBMIT_URL,
+      queryUrl:
+        stored.runninghub?.queryUrl ||
+        process.env.RUNNINGHUB_QUERY_URL ||
+        DEFAULT_RUNNINGHUB_QUERY_URL,
+      uploadUrl:
+        stored.runninghub?.uploadUrl ||
+        process.env.RUNNINGHUB_UPLOAD_URL ||
+        DEFAULT_RUNNINGHUB_UPLOAD_URL,
     },
   };
 }
