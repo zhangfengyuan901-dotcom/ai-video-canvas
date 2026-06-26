@@ -1,5 +1,6 @@
 // =========================================================================
-// @ai-video-canvas/shared 鈥?鍓嶅悗绔叡浜暟鎹被鍨?// =========================================================================
+// @ai-video-canvas/shared -- Shared types for frontend and backend
+// =========================================================================
 
 // ---- Project -----------------------------------------------------------
 
@@ -9,7 +10,7 @@ export interface Project {
   description?: string;
   aspectRatio: "16:9" | "9:16";
   resolution: "720p" | "1080p" | "4k";
-  defaultSceneDuration: number; // 榛樿 8
+  defaultSceneDuration: number; // Default: 8
   rootPath: string;
   createdAt: string;
   updatedAt: string;
@@ -54,7 +55,7 @@ export interface Scene {
   motionPrompt: string;
   dialogue?: string;
   audioEffects?: string;
-  duration: number; // 榛樿 8
+  duration: number; // Default: 8
   status: SceneStatus;
   locked: boolean;
   createdAt: string;
@@ -142,6 +143,21 @@ export interface VideoClip {
   version: number;
   prompt: string;
   taskId?: string;
+  retryOfClipId?: string | null;
+  retryReason?: string | null;
+  retryCreatedAt?: string | null;
+  retrySource?: {
+    id: string;
+    version: number;
+    status: ClipStatus;
+    error?: string | null;
+  } | null;
+  retryChildren?: Array<{
+    id: string;
+    version: number;
+    status: ClipStatus;
+    createdAt: string;
+  }> | null;
   remoteUrl?: string;
   localPath?: string;
   duration: number;
@@ -193,7 +209,8 @@ export type JobType =
   | "STORYBOARD_STRIP_COMPOSE"
   | "VIDEO_GENERATE"
   | "VIDEO_REGENERATE"
-  | "EXPORT_VIDEO";
+  | "EXPORT_VIDEO"
+  | "VIDEO_RETRY";
 
 export type JobStatus = "queued" | "running" | "success" | "failed" | "cancelled";
 
@@ -252,6 +269,16 @@ export interface GptScriptOutput {
 
 // ---- API ---------------------------------------------------------------
 
+
+
+export interface VideoRetryResponse {
+  jobId: string;
+  status: string;
+  sourceClipId: string;
+  retryClipId?: string | null;
+  sceneId: string;
+  projectId: string;
+}
 export interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;

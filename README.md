@@ -148,6 +148,37 @@ GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
 
 前端诊断面板默认读取列表接口返回的 summary diagnostics；当用户展开「查看诊断」时，会调用 `/diagnostics` detail endpoint 加载完整 `usage / results / failedReason / promptTips`。
 
+
+### 失败视频安全重试
+
+失败 clip 支持安全重试：
+
+```http
+POST /api/projects/:projectId/scenes/:sceneId/videos/:clipId/retry
+```
+
+请求体：
+
+```json
+{
+  "retryReason": "optional reason"
+}
+```
+
+重试行为：
+
+* 仅允许 `status=failed` 的 clip 重试
+* 不覆盖原 failed clip
+* 创建新的 video clip version
+* 新版本记录 `retryOfClipId`
+* 新版本记录 `retryReason`
+* 新版本记录 `retryCreatedAt`
+* 如果同一个 source clip 已有 running retry，会拒绝重复提交
+* 新版本成功后可成为当前 clip
+* 旧 failed clip 仍保留用于排障
+
+前端诊断抽屉会展示 retry lineage，并在可重试时显示「创建重试版本」。
+
 ### RunningHub 诊断抽屉
 
 前端视频版本区提供「排障详情」入口。点击后会打开右侧诊断抽屉，并通过：

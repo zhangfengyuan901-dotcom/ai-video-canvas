@@ -1,5 +1,5 @@
-﻿// =========================================================================
-// Video API Routes — Phase 4: 图生视频
+// =========================================================================
+// Video API Routes -- Phase 4: Image-to-video
 // =========================================================================
 
 import { FastifyInstance } from "fastify";
@@ -11,16 +11,17 @@ import { hasApiKey } from "../services/api/RunningHubVideoClient.js";
 import { buildClipDiagnosticsDto, toVideoClipDto } from "../services/video/ClipDiagnosticsDto.js";
 import { createJob } from "../services/jobs/JobService.js";
 import { startVideoWorker } from "../services/jobs/VideoWorker.js";
+import { startVideoRetryWorker } from "../services/jobs/VideoRetryWorker.js";
 
 export async function videoRoutes(app: FastifyInstance) {
-  // ---- 0. 检查 API Key 状态 ---------------------------------------------
+  // ---- 0. Check API key status ---------------------------------------------
 
   app.get("/projects/:projectId/videos/check-key", async () => ({
     success: true,
     data: { configured: hasApiKey() },
   }));
 
-  // ---- 1. 生成视频（提交到 RunningHub） -----------------------------------
+  // ---- 1. Generate video (submit to RunningHub) -----------------------------------
   // POST /api/projects/:projectId/videos/generate
 
   app.post<{ Params: { projectId: string } }>(
@@ -29,7 +30,7 @@ export async function videoRoutes(app: FastifyInstance) {
       if (!hasApiKey()) {
         return reply.status(400).send({
           success: false,
-          error: "RUNNINGHUB_API_KEY 未配置，请在 .env 中设置",
+          error: "RUNNINGHUB_API_KEY not configured. Please set it in .env",
         });
       }
 
@@ -45,7 +46,7 @@ export async function videoRoutes(app: FastifyInstance) {
 
       const body = (request.body ?? {}) as { sceneIds?: string[] };
 
-      // 创建后台视频任务，立即返回 jobId
+      // Create background video task, return immediately jobId
       const job = createJob(request.params.projectId, "VIDEO_GENERATE", {
         sceneIds: body.sceneIds ?? undefined,
       });
@@ -58,13 +59,13 @@ export async function videoRoutes(app: FastifyInstance) {
     },
   );
 
-  // ---- 2. 获取项目的所有视频 clip（含 isCurrent 标记）-------------------------
+  // ---- 2. Get all video clips for project (with isCurrent flag)-------------------------
   // GET /api/projects/:projectId/videos
 
   app.get<{ Params: { projectId: string } }>(
     "/projects/:projectId/videos",
     async (request) => {
-      // 加载所有 scene 的 current_clip_id
+      // Load all scenes' current_clip_id
       const sceneRows = db
         .select()
         .from(scenes)
@@ -84,12 +85,12 @@ export async function videoRoutes(app: FastifyInstance) {
 
       return {
         success: true,
-        data: rows.map((r) => annotateClip(r, currentClipMap[r.sceneId])),
+        data: annotateClipsWithRetryLineage(rows, currentClipMap),
       };
     },
   );
 
-  // ---- 3. 获取单个场景的视频 clip（含 isCurrent 标记）-------------------------
+  // ---- 3. Get video clips for a single scene (with isCurrent flag)-------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/videos
 
   app.get<{ Params: { projectId: string; sceneId: string } }>(
@@ -110,25 +111,27 @@ export async function videoRoutes(app: FastifyInstance) {
         .orderBy(videoClips.version)
         .all();
 
+      var currentClipMapForScene = scene?.currentClipId ? { [request.params.sceneId]: scene.currentClipId } : {};
+
       return {
         success: true,
-        data: rows.map((r) => annotateClip(r, scene?.currentClipId ?? undefined)),
+        data: annotateClipsWithRetryLineage(rows, currentClipMapForScene),
       };
     },
   );
 
-  // ---- 4. 轮询所有正在运行的 clip（手动触发）--------------------------------
+  // ---- 4. Poll all running clips (manual trigger)--------------------------------
   // POST /api/projects/:projectId/videos/poll
 
   app.post<{ Params: { projectId: string } }>(
     "/projects/:projectId/videos/poll",
     async () => {
-      // 后台轮询器会自动运行，这个端点提供手动触发
-      return { success: true, data: { message: "后台轮询已在运行中" } };
+      // Poller runs automatically; this endpoint provides manual trigger
+      return { success: true, data: { message: "Background polling is already running" } };
       },
   );
 
-  // ---- 5. POST /use-version — 持久化当前版本选择 --------------------------
+  // ---- 5. POST /use-version -- Persist current version selection --------------------------
 
   app.post<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
     "/projects/:projectId/scenes/:sceneId/videos/:clipId/use-version",
@@ -161,7 +164,75 @@ export async function videoRoutes(app: FastifyInstance) {
     },
   );
 
-  // ---- 6. 单 clip diagnostics detail endpoint ---------------------------
+
+  // ---- 6. POST /retry -- Safe retry for failed clips ---------------------------------
+  // POST /api/projects/:projectId/scenes/:sceneId/videos/:clipId/retry
+
+  app.post<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
+    "/projects/:projectId/scenes/:sceneId/videos/:clipId/retry",
+    async (request, reply) => {
+      if (!hasApiKey()) {
+        return reply.status(400).send({
+          success: false,
+          error: "RUNNINGHUB_API_KEY not configured. Please set it in .env",
+        });
+      }
+
+      const clip = db
+        .select()
+        .from(videoClips)
+        .where(eq(videoClips.id, request.params.clipId))
+        .get();
+
+      if (!clip) {
+        return reply.status(404).send({ success: false, error: "Clip not found" });
+      }
+
+      if (clip.projectId !== request.params.projectId || clip.sceneId !== request.params.sceneId) {
+        return reply.status(400).send({
+          success: false,
+          error: "Clip does not belong to this scene/project",
+        });
+      }
+
+      if (clip.status !== "failed") {
+        return reply.status(400).send({
+          success: false,
+          error: "Only failed clips can be retried",
+        });
+      }
+
+      const body = (request.body ?? {}) as { retryReason?: string };
+
+      const job = createJob(request.params.projectId, "VIDEO_RETRY", {
+        sceneId: request.params.sceneId,
+        sourceClipId: request.params.clipId,
+        retryReason: body.retryReason ?? clip.error ?? "Retry failed clip",
+      });
+
+      startVideoRetryWorker(job.id, {
+        projectId: request.params.projectId,
+        sceneId: request.params.sceneId,
+        clipId: request.params.clipId,
+        retryReason: body.retryReason ?? clip.error ?? undefined,
+      });
+
+      return {
+        success: true,
+        data: {
+          jobId: job.id,
+          status: job.status,
+          sourceClipId: clip.id,
+          retryClipId: null,
+          sceneId: clip.sceneId,
+          projectId: clip.projectId,
+        },
+      };
+    },
+  );
+
+  // ---- 7. Single clip diagnostics detail endpoint ---------------------------
+  // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
   // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/diagnostics
 
   app.get<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
@@ -199,7 +270,7 @@ export async function videoRoutes(app: FastifyInstance) {
     },
   );
 
-  // ---- 7. 提供视频文件下载 -----------------------------------------------
+  // ---- 8. Serve video file download -----------------------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/videos/:clipId/video
 
   app.get<{ Params: { projectId: string; sceneId: string; clipId: string } }>(
@@ -246,7 +317,47 @@ export async function videoRoutes(app: FastifyInstance) {
   );
 }
 
-// ---- 辅助 ----------------------------------------------------------------
+
+// ---- Helper: batch retry lineage ------------------------------------------
+
+function annotateClipsWithRetryLineage(rows: any[], currentClipMap: Record<string, string>) {
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const childrenBySource = new Map<string, any[]>();
+
+  for (const row of rows) {
+    if (row.retryOfClipId) {
+      const list = childrenBySource.get(row.retryOfClipId) ?? [];
+      list.push(row);
+      childrenBySource.set(row.retryOfClipId, list);
+    }
+  }
+
+  return rows.map((row) => {
+    const dto = annotateClip(row, currentClipMap[row.sceneId]);
+    const source = row.retryOfClipId ? byId.get(row.retryOfClipId) : null;
+    const children = childrenBySource.get(row.id) ?? [];
+
+    return {
+      ...dto,
+      retrySource: source
+        ? {
+            id: source.id,
+            version: source.version,
+            status: source.status,
+            error: source.error ?? null,
+          }
+        : null,
+      retryChildren: children.map((child) => ({
+        id: child.id,
+        version: child.version,
+        status: child.status,
+        createdAt: child.createdAt,
+      })),
+    };
+  });
+}
+
+// ---- Helper ----------------------------------------------------------------
 
 function annotateClip(row: any, currentClipIdForScene?: string) {
   return toVideoClipDto(row, currentClipIdForScene, {

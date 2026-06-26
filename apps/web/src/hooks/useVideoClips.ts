@@ -1,18 +1,18 @@
 // =========================================================================
-// useVideoClips — 共享视频 clip 逻辑
-// TimelineTrack 和 SceneVideoPanel 共用同一套 clips 加载 / 版本选择
+// useVideoClips - shared video clip logic
+// TimelineTrack and SceneVideoPanel share clips loading and version selection
 // =========================================================================
 
 import { useCallback } from "react";
 import { useApi } from "./useApi";
 import { useProjectStore } from "../stores/projectStore";
-import type { VideoClip } from "@ai-video-canvas/shared";
+import type { VideoClip, VideoRetryResponse } from "@ai-video-canvas/shared";
 
 export function useVideoClips() {
   const { get, post } = useApi();
   const clipsByScene = useProjectStore((s) => s.clipsByScene);
 
-  /** 拉取全部 clips 并写入 store，返回原始数据用于 isCurrent 重建 */
+  /** Fetch all clips into store, return raw data for isCurrent rebuild */
   const fetchClips = useCallback(async () => {
     const project = useProjectStore.getState().currentProject;
     if (!project) return [];
@@ -21,7 +21,7 @@ export function useVideoClips() {
     return data;
   }, [get]);
 
-  /** 获取某个 scene 的当前 clip（isCurrent 优先，其次最新版本） */
+  /** Get current clip for a scene (isCurrent first, then latest version) */
   const getCurrentClip = useCallback(
     (sceneId: string) => {
       const clips = clipsByScene[sceneId] ?? [];
@@ -34,7 +34,23 @@ export function useVideoClips() {
     [clipsByScene],
   );
 
-  /** 持久化版本选择 → fetchClips 回读 → 返回 data */
+  /** Persist version choice -> fetchClips re-read -> return data */
+  const retryFailedClip = useCallback(
+    async (sceneId: string, clipId: string, retryReason?: string) => {
+      const project = useProjectStore.getState().currentProject;
+      if (!project) return null;
+
+      const result = await post<VideoRetryResponse>(
+        `/projects/${project.id}/scenes/${sceneId}/videos/${clipId}/retry`,
+        { retryReason },
+      );
+
+      await fetchClips();
+      return result;
+    },
+    [post, fetchClips],
+  );
+
   const selectVersion = useCallback(
     async (sceneId: string, clipId: string) => {
       const project = useProjectStore.getState().currentProject;
@@ -45,5 +61,5 @@ export function useVideoClips() {
     [post, fetchClips],
   );
 
-  return { clipsByScene, fetchClips, getCurrentClip, selectVersion };
+  return { clipsByScene, fetchClips, getCurrentClip, selectVersion, retryFailedClip };
 }

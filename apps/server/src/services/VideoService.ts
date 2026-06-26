@@ -1,12 +1,12 @@
 // =========================================================================
-// VideoService — 视频生成编排 + 后台轮询
-// 多版本支持：每次生成创建新纪录，保留历史版本
+// VideoService -- Video generation orchestration + background polling
+// Multi-version: each generation creates a new record, preserving history
 // =========================================================================
 
 import { v4 as uuid } from "uuid";
 import { eq, and } from "drizzle-orm";
 import { db } from "../db/index.js";
-import { videoClips, scenes, storyboardPanels } from "../db/schema.js";
+import { videoClips, scenes, storyboardPanels, projects } from "../db/schema.js";
 import { getVideoPath, writeVideoCurrentJson } from "./storage/AssetStorageService.js";
 import {
   uploadMultipleBinaries,
@@ -22,11 +22,11 @@ import {
 } from "./video/RunningHubDiagnosticsService.js";
 import type { VideoClip } from "@ai-video-canvas/shared";
 
-// ---- 类型 ---------------------------------------------------------------
+// ---- Types ---------------------------------------------------------------
 
 export type ClipRow = typeof videoClips.$inferSelect;
 
-// ---- 为单个场景提交视频生成 ------------------------------------------------
+// ---- Generate video for a single scene ------------------------------------------------
 
 export async function generateForScene(
   scene: {
@@ -38,12 +38,16 @@ export async function generateForScene(
     duration: number;
   },
   project: { aspectRatio: string; resolution: string },
+  options: {
+    retryOfClipId?: string;
+    retryReason?: string;
+  } = {},
 ): Promise<ClipRow> {
   if (!hasApiKey()) {
-    throw new Error("RUNNINGHUB_API_KEY 未配置，请先设置 .env");
+    throw new Error("RUNNINGHUB_API_KEY not configured. Please set it in .env");
   }
 
-  // 从 storyboard_panels.localPath 读取当前版本的 panel 图片路径
+  // Read current version panel image paths from storyboard_panels.localPath
   const panelRows = db
     .select()
     .from(storyboardPanels)
@@ -57,35 +61,34 @@ export async function generateForScene(
     })
     .filter(Boolean) as string[];
 
-  // 必须三张 panel（0/1/2）ready 且文件真实存在
+  // All 3 panels (0/1/2) must be ready with actual files
   if (panelPaths.length !== 3) {
     const missing = [0, 1, 2]
       .filter((i) => !panelRows.find((p) => p.panelIndex === i))
       .map((i) => `panelIndex=${i}`);
     throw new Error(
-      `场景 ${scene.order} (id=${scene.id}) 图生视频要求 panelIndex 0/1/2 三张 ready panel，` +
-      `当前仅 ${panelPaths.length} 张可用。` +
-      (missing.length > 0 ? ` 缺少: ${missing.join(", ")}。` : "") +
-      ` 可用 panel: ${panelRows.map((r) => `[${r.panelIndex}] status=${r.status}`).join("; ")}`
+      `Scene ${scene.order} (id=${scene.id}) requires 3 ready panels (panelIndex 0/1/2) for image-to-video, ` +
+      `only ${panelPaths.length} available.` +
+      (missing.length > 0 ? ` missing: ${missing.join(", ")}` : "") +
+      ` Available panels: ${panelRows.map((r) => `[${r.panelIndex}] status=${r.status}`).join("; ")}`
     );
   }
 
-  // 校验每张 panel 文件真实存在（panelIndex 0/1/2）
+  // Verify each panel file exists (panelIndex 0/1/2)
   for (let i = 0; i < 3; i++) {
     const panel = panelRows.find((p) => p.panelIndex === i);
     if (!panel || !panel.localPath || !existsSync(panel.localPath)) {
       throw new Error(
-        `场景 ${scene.order} (id=${scene.id}) panelIndex=${i} 文件丢失: ${panel?.localPath ?? "(无路径)"}。` +
-        `请重新生成故事板。`
+        `Scene ${scene.order} (id=${scene.id}) panelIndex=${i} file lost: ${panel?.localPath ?? "(no path)"}` +
+        `Please regenerate the storyboard`
       );
     }
   }
 
-  // 上传 panel 图片到 RunningHub 临时存储（方案 A）
-  // 获取 download_url 用于图生视频，比 Base64 更可靠
+  // Upload panel images to RunningHub temporary storage
   const imageUrls = await uploadMultipleBinaries(panelPaths);
 
-  // 确定版本号：查找该场景最大现有版本，+1
+  // Determine version number
   const existingClips = db
     .select()
     .from(videoClips)
@@ -96,7 +99,7 @@ export async function generateForScene(
       ? Math.max(...existingClips.map((c) => c.version)) + 1
       : 1;
 
-  // 收集 input panel IDs
+  // Collect input panel IDs
   const inputPanelRows = db
     .select()
     .from(storyboardPanels)
@@ -104,11 +107,11 @@ export async function generateForScene(
     .all();
   const inputPanelIds = inputPanelRows.filter((p) => p.status === "ready").map((p) => p.id);
 
-  // 构建 motion prompt
+  // Build motion prompt
   const prompt =
     scene.motionPrompt || `${scene.title}, smooth camera movement, cinematic quality`;
 
-  // 提交到 RunningHub
+  // Submit to RunningHub
   const taskId = await submitVideoTask(
     prompt,
     imageUrls,
@@ -120,8 +123,8 @@ export async function generateForScene(
   const now = new Date().toISOString();
   const localPath = getVideoPath(scene.projectId, scene.id, version);
 
-  // 始终创建新纪录（多版本）
-  const clip: typeof videoClips.$inferInsert = {
+  // Always create new record (multi-version)
+  const clip: any = {
     id: uuid(),
     projectId: scene.projectId,
     sceneId: scene.id,
@@ -131,6 +134,9 @@ export async function generateForScene(
     taskId,
     runninghubStatus: "SUBMITTED",
     localPath,
+    retryOfClipId: options.retryOfClipId ?? null,
+    retryReason: options.retryReason ?? null,
+    retryCreatedAt: options.retryOfClipId ? now : null,
     inputPanelIdsJson: JSON.stringify(inputPanelIds),
     duration: scene.duration,
     resolution: project.resolution as any,
@@ -145,7 +151,89 @@ export async function generateForScene(
   return clip as ClipRow;
 }
 
-// ---- 轮询所有 running / queued 的 clip -----------------------------------
+// ---- Safe retry for failed clips -------------------------------------------------
+
+export async function retryFailedClip(params: {
+  projectId: string;
+  sceneId: string;
+  clipId: string;
+  retryReason?: string;
+}): Promise<ClipRow> {
+  if (!hasApiKey()) {
+    throw new Error("RUNNINGHUB_API_KEY not configured. Please set it in .env");
+  }
+
+  const source = db
+    .select()
+    .from(videoClips)
+    .where(eq(videoClips.id, params.clipId))
+    .get();
+
+  if (!source) {
+    throw new Error("Source clip not found");
+  }
+
+  if (source.projectId !== params.projectId || source.sceneId !== params.sceneId) {
+    throw new Error("Source clip does not belong to this scene/project");
+  }
+
+  if (source.status !== "failed") {
+    throw new Error("Only failed clips can be retried");
+  }
+
+  // Check for existing running retry from the same source
+  const existingRunningRetry = db
+    .select()
+    .from(videoClips)
+    .where(eq(videoClips.sceneId, params.sceneId))
+    .all()
+    .find((clip: any) => clip.retryOfClipId === params.clipId && clip.status === "running");
+
+  if (existingRunningRetry) {
+    throw new Error("Retry already running for this clip: " + existingRunningRetry.id);
+  }
+
+  const scene = db
+    .select()
+    .from(scenes)
+    .where(eq(scenes.id, params.sceneId))
+    .get();
+
+  if (!scene || scene.projectId !== params.projectId) {
+    throw new Error("Scene not found");
+  }
+
+  const project = db
+    .select()
+    .from(projects)
+    .where(eq(projects.id, params.projectId))
+    .get();
+
+  if (!project) {
+    throw new Error("Project not found");
+  }
+
+  return await generateForScene(
+    {
+      id: scene.id,
+      projectId: scene.projectId,
+      order: scene.order,
+      title: scene.title,
+      motionPrompt: scene.motionPrompt,
+      duration: scene.duration,
+    },
+    {
+      aspectRatio: project.aspectRatio,
+      resolution: project.resolution,
+    },
+    {
+      retryOfClipId: source.id,
+      retryReason: params.retryReason ?? source.error ?? "Retry failed clip",
+    },
+  );
+}
+
+// ---- Poll all running / queued clips -----------------------------------
 
 const POLL_INTERVAL_MS = 10_000;
 let pollTimer: ReturnType<typeof setInterval> | null = null;
@@ -153,7 +241,7 @@ let pollTimer: ReturnType<typeof setInterval> | null = null;
 export function startBackgroundPoller(): void {
   if (pollTimer) return;
   pollTimer = setInterval(pollPendingClips, POLL_INTERVAL_MS);
-  console.log(`  [VideoService] 后台轮询已启动，间隔 ${POLL_INTERVAL_MS / 1000}s`);
+  console.log(`  [VideoService] Poller started, interval ${POLL_INTERVAL_MS / 1000}s`);
 }
 
 export function stopBackgroundPoller(): void {
@@ -182,7 +270,7 @@ async function pollPendingClips(): Promise<void> {
       await pollSingleClip(clip);
     }
   } catch (err) {
-    console.error("[VideoService] 后台轮询出错:", err);
+    console.error("[VideoService] Poller error:", err);
   }
 }
 
@@ -197,7 +285,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
       const videoUrl = primaryResult?.url;
 
       if (!videoUrl || !clip.localPath) {
-        throw new Error("任务成功但未找到视频 URL");
+        throw new Error("Task succeeded but no video URL found");
       }
 
       await downloadVideo(videoUrl, clip.localPath);
@@ -228,7 +316,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         .where(eq(scenes.id, clip.sceneId))
         .run();
 
-      console.log(`  [VideoService] 视频就绪: scene=${clip.sceneId} v${clip.version}`);
+      console.log(`  [VideoService] Video ready: scene=${clip.sceneId} v${clip.version}`);
     } else if (result.status === "FAILED") {
       const now = new Date().toISOString();
       const diagnostics = buildRunningHubDiagnostics(result);
@@ -236,7 +324,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         result.errorMessage ??
         diagnostics.runninghubErrorMessage ??
         diagnostics.runninghubFailedReasonJson ??
-        "未知错误";
+        "Unknown error";
 
       db.update(videoClips)
         .set({
@@ -250,9 +338,9 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         .where(eq(videoClips.id, clip.id))
         .run();
 
-      console.error(`  [VideoService] 视频失败: scene=${clip.sceneId} err=${errMsg}`);
+      console.error(`  [VideoService] Video failed: scene=${clip.sceneId} err=${errMsg}`);
     } else {
-      // QUEUED / RUNNING → 更新诊断和轮询时间
+      // QUEUED / RUNNING
       const now = new Date().toISOString();
       const diagnostics = buildRunningHubDiagnostics(result);
 
@@ -266,7 +354,7 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
         .run();
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : "轮询查询失败";
+    const msg = err instanceof Error ? err.message : "Poll query failed";
     const now = new Date().toISOString();
 
     db.update(videoClips)
@@ -278,6 +366,6 @@ async function pollSingleClip(clip: ClipRow): Promise<void> {
       .where(eq(videoClips.id, clip.id))
       .run();
 
-    console.error(`  [VideoService] 轮询 clip ${clip.id} 失败: ${msg}`);
+    console.error(`  [VideoService] Poll clip ${clip.id} failed: ${msg}`);
   }
 }

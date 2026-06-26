@@ -1,8 +1,8 @@
 // =========================================================================
 // verify-9-diagnostics-drawer-static.ts
 // =========================================================================
-// 静态验证：检查诊断抽屉、工具函数、复制按钮等组件是否完整接入。
-// 不依赖 server，不依赖 API Key。
+// Static verification: CheckCheck drawer, utility functions, copy button components are correctly wired.
+// No server or API key required.
 // =========================================================================
 
 import { existsSync, readFileSync } from "node:fs";

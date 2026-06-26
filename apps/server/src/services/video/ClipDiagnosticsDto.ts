@@ -1,9 +1,9 @@
-﻿// =========================================================================
-// ClipDiagnosticsDto — 数据库 row → 前端可读 DTO
 // =========================================================================
-// 把 video_clips 中的 JSON 字符串字段和 runninghub_* 列
-// 转换成 RunningHubClipDiagnostics 和 VideoClip DTO，
-// 避免前端直接依赖数据库字段名。
+// ClipDiagnosticsDto -- db row -> frontend readable DTO
+// =========================================================================
+// Map JSON string fields in video_clips and runninghub_* columns
+// to RunningHubClipDiagnostics and VideoClip DTO,
+// so frontend does not depend on DB column names directly.
 // =========================================================================
 
 import type {
@@ -13,7 +13,7 @@ import type {
   VideoClip,
 } from "@ai-video-canvas/shared";
 
-// ---- 安全 JSON 解析 ----------------------------------------------------
+// ---- Safe JSON parsing ----------------------------------------------------
 
 export function safeParseJson<T = unknown>(value: string | null | undefined): T | null {
   if (!value) return null;
@@ -29,14 +29,14 @@ export function safeParseStringArray(value: string | null | undefined): string[]
   return Array.isArray(parsed) ? parsed.filter((v): v is string => typeof v === "string") : [];
 }
 
-// ---- 摘要工具 -----------------------------------------------------------
+// ---- Summary utilities -----------------------------------------------------------
 
 function summarizeText(value: string | null | undefined, maxLength: number): string | null {
   if (!value) return null;
   return value.length > maxLength ? `${value.slice(0, maxLength)}...` : value;
 }
 
-// ---- 构建诊断 DTO --------------------------------------------------------
+// ---- Build diagnostics DTO --------------------------------------------------------
 
 export function buildClipDiagnosticsDto(
   row: any,
@@ -73,7 +73,7 @@ export function buildClipDiagnosticsDto(
   };
 }
 
-// ---- 完整 VideoClip DTO --------------------------------------------------
+// ---- Complete VideoClip DTO --------------------------------------------------
 
 export function toVideoClipDto(
   row: any,
@@ -93,6 +93,9 @@ export function toVideoClipDto(
     duration: row.duration,
     resolution: row.resolution,
     aspectRatio: row.aspectRatio,
+    retryOfClipId: row.retryOfClipId ?? null,
+    retryReason: row.retryReason ?? null,
+    retryCreatedAt: row.retryCreatedAt ?? null,
     inputPanelIds: safeParseStringArray(row.inputPanelIdsJson),
     status: row.status,
     error: row.error ?? undefined,

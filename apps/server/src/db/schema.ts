@@ -1,5 +1,5 @@
-﻿// =========================================================================
-// Drizzle ORM Schema — Phase 4: +video_clips
+// =========================================================================
+// Drizzle ORM Schema -- Phase 4: +video_clips
 // =========================================================================
 
 import { sqliteTable, text, integer } from "drizzle-orm/sqlite-core";
@@ -82,6 +82,9 @@ export const videoClips = sqliteTable("video_clips", {
   taskId: text("task_id"),
   remoteUrl: text("remote_url"),
  localPath: text("local_path"),
+  retryOfClipId: text("retry_of_clip_id"),
+  retryReason: text("retry_reason"),
+  retryCreatedAt: text("retry_created_at"),
   runninghubStatus: text("runninghub_status"),
   runninghubErrorCode: text("runninghub_error_code"),
   runninghubErrorMessage: text("runninghub_error_message"),
