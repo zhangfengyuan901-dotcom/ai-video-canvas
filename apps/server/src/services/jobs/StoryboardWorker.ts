@@ -68,6 +68,7 @@ export async function runStoryboardJob(
           createdAt: scene.createdAt, updatedAt: scene.updatedAt,
         };
 
+        
         const prompts = await generatePanelPrompts(sceneData, styleBible);
 
         // ---- Step 2: 逐个 panel 生成图片 ----

@@ -114,6 +114,25 @@ export const videoClips = sqliteTable("video_clips", {
  updatedAt: text("updated_at").notNull(),
 });
 
+
+// ---- reference_assets -------------------------------------------------
+
+export const referenceAssets = sqliteTable("reference_assets", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  label: text("label"),
+  description: text("description"),
+  localPath: text("local_path").notNull(),
+  mimeType: text("mime_type").notNull(),
+  originalFilename: text("original_filename"),
+  width: integer("width"),
+  height: integer("height"),
+  fileSize: integer("file_size"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
+});
+
  // ---- jobs (Phase 4) -------------------------------------------------
 
  export const jobs = sqliteTable("jobs", {

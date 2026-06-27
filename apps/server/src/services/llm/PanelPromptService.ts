@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // PanelPromptService — 调用 GPT 为镜头生成 3 个 panel prompt
 // 每个镜头拆成 start / middle / end 三张关键帧提示词
 // =========================================================================
@@ -39,6 +39,7 @@ JSON Schema:
 export async function generatePanelPrompts(
   scene: Scene,
   styleBible: Omit<StyleBible, "id" | "projectId">,
+  refAssets?: Array<{ type: string; label?: string | null; description?: string | null }>,
 ): Promise<{ panelIndex: number; role: "start" | "middle" | "end"; prompt: string }[]> {
   if (!API_KEY || API_KEY === "your_chat_group_key") {
     throw new Error("PACKY_CHAT_API_KEY is not configured in .env");
@@ -66,7 +67,23 @@ export async function generatePanelPrompts(
     `动态: ${scene.motionPrompt}`,
   ].join("\n");
 
-  const userPrompt = `项目风格：\n${styleText}\n\n镜头信息：\n${sceneText}`;
+    // Build reference context
+  let refText = "";
+  if (refAssets && refAssets.length > 0) {
+    const refLines = refAssets
+      .filter((a) => a.description || a.label)
+      .map((a) => {
+        const typeLabel: Record<string, string> = {
+          character: "人物", scene: "场景", product: "产品", first_frame: "首帧", style: "风格", other: "参考",
+        };
+        return `${typeLabel[a.type] ?? "参考"}：${a.label ?? "无标签"}\n  描述：${a.description ?? "用户已上传该类型参考图"}`;
+      });
+    if (refLines.length > 0) {
+      refText = `\n\n参考素材：\n${refLines.join("\n")}\n\n要求：\n1. 人物参考：用于保持角色外貌一致\n2. 场景参考：用于保持环境一致\n3. 产品参考：用于保持产品颜色、形状、包装一致\n4. 首帧参考：第一个 scene 的 start panel 要尽量贴合首帧`;
+    }
+  }
+
+  const userPrompt = `项目风格：\n${styleText}\n\n镜头信息：\n${sceneText}${refText}`;
 
   const response = await fetch(`${BASE_URL}/chat/completions`, {
     method: "POST",

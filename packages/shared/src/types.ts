@@ -73,6 +73,14 @@ export type PanelRole = "start" | "middle" | "end";
 export type PanelStatus = "queued" | "generating" | "ready" | "failed";
 export type PanelSourceType = "ai" | "upload";
 
+export type ReferenceAssetType =
+  | "character"
+  | "scene"
+  | "product"
+  | "first_frame"
+  | "style"
+  | "other";
+
 export interface StoryboardPanel {
   id: string;
   projectId: string;
@@ -96,6 +104,23 @@ export interface StoryboardPanel {
   updatedAt: string;
 }
 
+
+
+export interface ReferenceAsset {
+  id: string;
+  projectId: string;
+  type: ReferenceAssetType;
+  label?: string | null;
+  description?: string | null;
+  localPath: string;
+  mimeType: string;
+  originalFilename?: string | null;
+  width?: number | null;
+  height?: number | null;
+  fileSize?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface RunningHubTaskUsageDto {
   consumeMoney?: string | number | null;

@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // CanvasPanel — 中间画布 / 项目操作区
 // =========================================================================
 
@@ -7,6 +7,8 @@ import { useApi } from "../../hooks/useApi";
 import { useProjectStore } from "../../stores/projectStore";
 import SceneList from "../scene/SceneList";
 import ProjectProgressPanel from "../project/ProjectProgressPanel";
+import ScriptInputPanel from "../script/ScriptInputPanel";
+import ScriptPreviewPanel from "../script/ScriptPreviewPanel";
 import type { Project } from "@ai-video-canvas/shared";
 
 export default function CanvasPanel() {

@@ -1,11 +1,11 @@
-// =========================================================================
+﻿// =========================================================================
 // Chat + Script Generation Routes
 // =========================================================================
 
 import { FastifyInstance } from "fastify";
 import { v4 as uuid } from "uuid";
 import { db } from "../db/index.js";
-import { projects, scenes, storyboardPanels, videoClips } from "../db/schema.js";
+import { projects, scenes, storyboardPanels, videoClips, referenceAssets } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { chatRequestSchema } from "@ai-video-canvas/shared";
 import { generateScript } from "../services/llm/ScriptService.js";
@@ -39,7 +39,32 @@ export async function chatRoutes(app: FastifyInstance) {
 
       try {
         // 调用 GPT 生成脚本
-        const script: GptScriptOutput = await generateScript(parsed.data.message);
+                // 读取参考图信息，加入 prompt 上下文
+        const refAssets = db
+          .select()
+          .from(referenceAssets)
+          .where(eq(referenceAssets.projectId, project.id))
+          .all();
+
+        let refContext = "";
+        if (refAssets.length > 0) {
+          const refLines = refAssets
+            .filter((a) => a.description || a.label)
+            .map((a) => {
+              const typeLabel: Record<string, string> = {
+                character: "人物参考图", scene: "场景参考图", product: "产品参考图",
+                first_frame: "首帧参考图", style: "风格参考图", other: "参考图",
+              };
+              return `${typeLabel[a.type] ?? "参考图"}：${a.label ?? "无标签"}\n   描述：${a.description ?? "用户已上传该类型参考图但未填写详细说明。生成脚本时保持该类型元素一致。"}`;
+            });
+          if (refLines.length > 0) {
+            refContext = `\n\n项目参考素材：\n${refLines.join("\n")}\n\n要求：\n1. 如果有人物参考图说明，则所有出现该人物的镜头要保持一致\n2. 如果有场景参考图说明，则场景风格要保持一致\n3. 如果有产品参考图说明，则产品露出方式要稳定，不要凭空改变包装、颜色、形状\n4. 如果有首帧参考图说明，则第一段镜头尽量贴合首帧画面\n5. 每个镜头仍要输出结构化 JSON`;
+          }
+        }
+
+        // 调用 GPT 生成脚本（加入参考图上下文）
+        const enhancedMessage = refContext ? `${parsed.data.message}\n\n${refContext}` : parsed.data.message;
+        const script: GptScriptOutput = await generateScript(enhancedMessage);
 
         // 保存 scenes 到数据库
         const now = new Date().toISOString();

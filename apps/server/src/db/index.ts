@@ -105,6 +105,12 @@ try {
 }
 
 
+try {
+  sqlite.exec("CREATE TABLE IF NOT EXISTS reference_assets (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, type TEXT NOT NULL, label TEXT, description TEXT, local_path TEXT NOT NULL, mime_type TEXT NOT NULL, original_filename TEXT, width INTEGER, height INTEGER, file_size INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)");
+} catch (e) {
+  console.warn("[DB] reference_assets table creation warning:", e);
+}
+
 // ---- storyboard_panels 唯一约束 + 清理重复数据 -------------------------
 
 try {

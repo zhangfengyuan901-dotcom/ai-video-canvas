@@ -98,6 +98,28 @@ export const reviewStatusSchema = z.object({
   setCurrent: z.boolean().optional(),
 });
 
+
+// ---- Reference Assets --------------------------------------------------
+
+export const referenceAssetTypeSchema = z.enum([
+  "character",
+  "scene",
+  "product",
+  "first_frame",
+  "style",
+  "other",
+]);
+
+export const updateReferenceAssetSchema = z.object({
+  type: referenceAssetTypeSchema.optional(),
+  label: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const createScriptFromInputSchema = z.object({
+  message: z.string().min(1).max(12000),
+});
+
 // ---- Storyboard Panel API -----------------------------------------------
 
 export const generateStoryboardSchema = z.object({
