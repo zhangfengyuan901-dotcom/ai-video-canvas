@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // ClipDiagnosticsDto -- db row -> frontend readable DTO
 // =========================================================================
 // Map JSON string fields in video_clips and runninghub_* columns
@@ -100,6 +100,10 @@ export function toVideoClipDto(
     status: row.status,
     error: row.error ?? undefined,
     isCurrent: currentClipIdForScene === row.id,
+    reviewStatus: row.reviewStatus ?? undefined,
+    reviewNote: row.reviewNote ?? undefined,
+    approvedAt: row.approvedAt ?? undefined,
+    rejectedAt: row.rejectedAt ?? undefined,
     diagnostics: buildClipDiagnosticsDto(row, {
       includeFull: options.includeFullDiagnostics ?? false,
     }),

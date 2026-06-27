@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // @ai-video-canvas/shared — zod 运行时校验 schema
 // =========================================================================
 
@@ -87,6 +87,15 @@ export const gptPanelOutputSchema = z.object({
       }),
     )
     .length(3),
+});
+
+
+// ---- Review Status API ------------------------------------------------
+
+export const reviewStatusSchema = z.object({
+  status: z.enum(["pending", "approved", "rejected"]),
+  note: z.string().optional(),
+  setCurrent: z.boolean().optional(),
 });
 
 // ---- Storyboard Panel API -----------------------------------------------

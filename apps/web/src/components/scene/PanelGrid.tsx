@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // PanelGrid — 三宫格故事板展示
 // 显示单个镜头的 start / middle / end 三张关键帧
 // =========================================================================
@@ -18,7 +18,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
   const isGeneratingGlob = useProjectStore((s) => s.isGeneratingStoryboard);
   const setPanels = useProjectStore((s) => s.setPanels);
   const currentProject = useProjectStore((s) => s.currentProject);
-  const { post, get } = useApi();
+  const { post, get, patch } = useApi();
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<number>(0);

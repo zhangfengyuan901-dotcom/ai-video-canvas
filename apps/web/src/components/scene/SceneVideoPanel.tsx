@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // SceneVideoPanel -- Individual scene video version panel
 // Display current video, generate video, switch versions
 // =========================================================================
@@ -15,7 +15,7 @@ interface SceneVideoPanelProps {
 }
 
 export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
-  var { get } = useApi();
+  var { get, patch } = useApi();
   var { fetchClips, getCurrentClip, selectVersion, retryFailedClip } = useVideoClips();
   var currentProject = useProjectStore(function (s) { return s.currentProject; });
   var isGeneratingVideo = useProjectStore(function (s) { return s.isGeneratingVideo; });

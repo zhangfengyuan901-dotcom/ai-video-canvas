@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // @ai-video-canvas/shared -- Shared types for frontend and backend
 // =========================================================================
 
@@ -31,6 +31,8 @@ export interface StyleBible {
 
 // ---- Scene -------------------------------------------------------------
 
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
 export type SceneStatus =
   | "draft"
   | "storyboard_generating"
@@ -58,6 +60,9 @@ export interface Scene {
   duration: number; // Default: 8
   status: SceneStatus;
   locked: boolean;
+  storyboardReviewStatus?: ReviewStatus;
+  storyboardReviewNote?: string | null;
+  storyboardApprovedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -167,6 +172,10 @@ export interface VideoClip {
   status: ClipStatus;
   error?: string;
   isCurrent?: boolean;
+  reviewStatus?: ReviewStatus;
+  reviewNote?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
   diagnostics?: RunningHubClipDiagnostics;
   createdAt: string;
   updatedAt: string;

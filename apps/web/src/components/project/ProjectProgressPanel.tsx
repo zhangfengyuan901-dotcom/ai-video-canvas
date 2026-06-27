@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // ProjectProgressPanel — 项目进度与下一步引导
 // 汇总脚本/三图/视频完成度，提供批量生成缺失三图/视频的快捷动作
 // =========================================================================
@@ -141,6 +141,55 @@ export default function ProjectProgressPanel() {
     }
   }
 
+  // ---- Generate all storyboards (batch) ----------------------------------
+
+  async function handleGenerateAllStoryboards() {
+    if (!currentProject || isGeneratingStoryboard) return;
+    setError(null);
+    useProjectStore.getState().setGeneratingStoryboard(true);
+    setStoryboardJobProgress(0);
+    try {
+      const data = await post<{ jobId: string }>(
+        `/projects/${currentProject.id}/storyboard/generate`,
+        {},
+      );
+      setStoryboardJobId(data.jobId);
+    } catch (err) {
+      console.error("Generate all storyboards failed:", err);
+      useProjectStore.getState().setGeneratingStoryboard(false);
+      setError("生成失败。");
+    }
+  }
+
+  // ---- Generate all videos (batch) ----------------------------------------
+
+  async function handleGenerateAllVideos() {
+    if (!currentProject || isGeneratingVideo) return;
+    // Only generate for approved storyboards without ready video
+    const approvedScenes = scenes
+      .filter((s) => s.storyboardReviewStatus === "approved")
+      .filter((s) => getCurrentClip(s.id)?.status !== "ready" && getCurrentClip(s.id)?.status !== "running")
+      .map((s) => s.id);
+    if (approvedScenes.length === 0) {
+      setError("没有可生成的视频，请先审核通过故事板。");
+      return;
+    }
+    setError(null);
+    useProjectStore.getState().setGeneratingVideo(true);
+    setVideoJobProgress(0);
+    try {
+      const data = await post<{ jobId: string }>(
+        `/projects/${currentProject.id}/videos/generate`,
+        { sceneIds: approvedScenes },
+      );
+      setVideoJobId(data.jobId);
+    } catch (err) {
+      console.error("Generate all videos failed:", err);
+      useProjectStore.getState().setGeneratingVideo(false);
+      setError("生成失败。");
+    }
+  }
+
   // ---- Generate missing videos -------------------------------------------
 
   async function handleGenerateMissingVideos() {
@@ -268,15 +317,26 @@ export default function ProjectProgressPanel() {
             <p className="text-xs text-zinc-400">
               下一步：还有 {missingStoryboardSceneIds.length} 个镜头缺少三图素材，建议先生成缺失三图。
             </p>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleGenerateMissingStoryboards(); }}
-              disabled={isGeneratingStoryboard}
-              className="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
-            >
-              {isGeneratingStoryboard && storyboardJobId
-                ? `生成中... ${storyboardJobProgress}%`
-                : `生成缺失三图（${missingStoryboardSceneIds.length}）`}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleGenerateMissingStoryboards(); }}
+                disabled={isGeneratingStoryboard}
+                className="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {isGeneratingStoryboard && storyboardJobId
+                  ? `生成中... ${storyboardJobProgress}%`
+                  : `生成缺失三图（${missingStoryboardSceneIds.length}）`}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleGenerateAllStoryboards(); }}
+                disabled={isGeneratingStoryboard}
+                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {isGeneratingStoryboard && storyboardJobId
+                  ? `生成中... ${storyboardJobProgress}%`
+                  : "生成全部故事板"}
+              </button>
+            </div>
           </>
         )}
 
@@ -285,22 +345,44 @@ export default function ProjectProgressPanel() {
             <p className="text-xs text-zinc-400">
               下一步：三图素材已完成，还有 {missingVideoSceneIds.length} 个镜头缺少视频，建议生成缺失视频。
             </p>
-            <button
-              onClick={(e) => { e.stopPropagation(); handleGenerateMissingVideos(); }}
-              disabled={isGeneratingVideo}
-              className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
-            >
-              {isGeneratingVideo && videoJobId
-                ? `生成中... ${videoJobProgress}%`
-                : `生成缺失视频（${missingVideoSceneIds.length}）`}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); handleGenerateMissingVideos(); }}
+                disabled={isGeneratingVideo}
+                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {isGeneratingVideo && videoJobId
+                  ? `生成中... ${videoJobProgress}%`
+                  : `生成缺失视频（${missingVideoSceneIds.length}）`}
+              </button>
+              <button
+                onClick={(e) => { e.stopPropagation(); handleGenerateAllVideos(); }}
+                disabled={isGeneratingVideo}
+                className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+              >
+                {isGeneratingVideo && videoJobId
+                  ? `生成中... ${videoJobProgress}%`
+                  : "生成全部视频"}
+              </button>
+            </div>
           </>
         )}
 
         {nextAction === "ready_to_export" && (
-          <p className="text-xs text-green-400">
-            全部镜头视频已完成，可以点击右上角"导出完整视频"。
-          </p>
+          <>
+            <p className="text-xs text-green-400">
+              全部镜头视频已完成，可以点击右上角"导出完整视频"。
+            </p>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleGenerateAllVideos(); }}
+              disabled={isGeneratingVideo}
+              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+            >
+              {isGeneratingVideo && videoJobId
+                ? `生成中... ${videoJobProgress}%`
+                : "重新生成全部视频"}
+            </button>
+          </>
         )}
 
         {failedVideoCount > 0 && (
