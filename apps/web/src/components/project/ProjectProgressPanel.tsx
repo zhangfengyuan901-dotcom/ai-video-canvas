@@ -1,5 +1,5 @@
 ﻿// =========================================================================
-// ProjectProgressPanel — 项目进度与下一步引导
+// ProjectProgressPanel — 项目进度与下一步引导 (redesigned)
 // 汇总脚本/三图/视频完成度，提供批量生成缺失三图/视频的快捷动作
 // =========================================================================
 
@@ -7,7 +7,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useApi } from "../../hooks/useApi";
 import { useVideoClips } from "../../hooks/useVideoClips";
 import { useProjectStore } from "../../stores/projectStore";
+import GlassPanel from "../ui/GlassPanel";
+import SectionHeader from "../ui/SectionHeader";
+import BentoCard from "../ui/BentoCard";
+import SoftDivider from "../ui/SoftDivider";
 import type { StoryboardPanel } from "@ai-video-canvas/shared";
+import { RefreshCw, ImagePlus, Video, AlertTriangle } from "lucide-react";
 
 type NextAction =
   | "create_script"
@@ -268,61 +273,79 @@ export default function ProjectProgressPanel() {
   }
 
   return (
-    <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
-      {/* Header */}
-      <div className="flex items-center gap-2">
-        <span className="text-sm font-medium text-zinc-300">项目进度</span>
-        <div className="flex-1" />
-        <button
-          onClick={(e) => { e.stopPropagation(); refreshProgress(); }}
-          className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors"
-        >
-          刷新状态
-        </button>
-      </div>
+    <GlassPanel className="p-4 space-y-4">
+      <SectionHeader
+        title="项目进度"
+        action={
+          <button
+            onClick={(e) => { e.stopPropagation(); refreshProgress(); }}
+            className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-2 py-1 text-[10px] font-medium text-zinc-500 transition-all hover:bg-white/[0.04] hover:text-zinc-300"
+          >
+            <RefreshCw className="h-3 w-3" />
+            刷新
+          </button>
+        }
+      />
 
       {/* Error */}
       {error && (
-        <div className="text-xs text-red-400 bg-red-600/10 rounded px-3 py-2">{error}</div>
+        <div className="flex items-center gap-2 text-xs text-rose-400 bg-rose-600/10 border border-rose-500/10 rounded-xl px-3 py-2">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+          {error}
+        </div>
       )}
 
       {/* Stat cards */}
-      <div className="grid grid-cols-4 gap-2">
-        <StatCard label="脚本" value={sceneCount > 0 ? `${sceneCount} 个镜头` : "0 个镜头"} done={sceneCount > 0} />
-        <StatCard
+      <div className="grid grid-cols-4 gap-3">
+        <BentoCard
+          label="脚本"
+          value={sceneCount > 0 ? `${sceneCount} 个镜头` : "0 个镜头"}
+          accent={sceneCount > 0}
+        />
+        <BentoCard
           label="三图素材"
           value={sceneCount > 0 ? `${storyboardReadySceneIds.length} / ${sceneCount}` : "0 / 0"}
-          done={sceneCount > 0 && storyboardReadySceneIds.length === sceneCount}
+          accent={sceneCount > 0 && storyboardReadySceneIds.length === sceneCount}
         />
-        <StatCard
+        <BentoCard
           label="视频片段"
           value={sceneCount > 0 ? `${videoReadySceneIds.length} / ${sceneCount}` : "0 / 0"}
-          done={sceneCount > 0 && videoReadySceneIds.length === sceneCount}
+          accent={sceneCount > 0 && videoReadySceneIds.length === sceneCount}
         />
-        <StatCard
+        <BentoCard
           label="导出状态"
           value={canExport ? "可导出" : "未完成"}
-          done={canExport}
+          accent={canExport}
         />
       </div>
 
+      {/* Loading indicator for panels */}
+      {loadingPanels && (
+        <p className="text-[10px] text-zinc-500 animate-pulse">正在加载素材状态...</p>
+      )}
+
+      <SoftDivider />
+
       {/* Next action */}
-      <div className="rounded bg-zinc-950/60 p-3 space-y-2">
+      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
         {nextAction === "create_script" && (
-          <p className="text-xs text-zinc-400">下一步：在左侧输入创意，生成视频脚本。</p>
+          <>
+            <p className="text-xs text-zinc-400">下一步：在左侧输入创意，生成视频脚本。</p>
+          </>
         )}
 
         {nextAction === "generate_missing_storyboards" && (
           <>
             <p className="text-xs text-zinc-400">
-              下一步：还有 {missingStoryboardSceneIds.length} 个镜头缺少三图素材，建议先生成缺失三图。
+              还有 <span className="text-amber-400 font-medium">{missingStoryboardSceneIds.length}</span> 个镜头缺少三图素材
             </p>
             <div className="flex gap-2">
               <button
                 onClick={(e) => { e.stopPropagation(); handleGenerateMissingStoryboards(); }}
                 disabled={isGeneratingStoryboard}
-                className="text-xs bg-amber-600 hover:bg-amber-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 text-white px-3 py-1.5 text-xs font-medium transition-all hover:bg-amber-500 active:bg-amber-700 disabled:opacity-40 disabled:pointer-events-none"
               >
+                <ImagePlus className="h-3.5 w-3.5" />
                 {isGeneratingStoryboard && storyboardJobId
                   ? `生成中... ${storyboardJobProgress}%`
                   : `生成缺失三图（${missingStoryboardSceneIds.length}）`}
@@ -330,8 +353,9 @@ export default function ProjectProgressPanel() {
               <button
                 onClick={(e) => { e.stopPropagation(); handleGenerateAllStoryboards(); }}
                 disabled={isGeneratingStoryboard}
-                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 text-white px-3 py-1.5 text-xs font-medium transition-all hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700 disabled:opacity-40 disabled:pointer-events-none shadow-sm shadow-blue-500/20"
               >
+                <ImagePlus className="h-3.5 w-3.5" />
                 {isGeneratingStoryboard && storyboardJobId
                   ? `生成中... ${storyboardJobProgress}%`
                   : "生成全部故事板"}
@@ -343,14 +367,15 @@ export default function ProjectProgressPanel() {
         {nextAction === "generate_missing_videos" && (
           <>
             <p className="text-xs text-zinc-400">
-              下一步：三图素材已完成，还有 {missingVideoSceneIds.length} 个镜头缺少视频，建议生成缺失视频。
+              三图素材已完成，还有 <span className="text-blue-400 font-medium">{missingVideoSceneIds.length}</span> 个镜头缺少视频
             </p>
             <div className="flex gap-2">
               <button
                 onClick={(e) => { e.stopPropagation(); handleGenerateMissingVideos(); }}
                 disabled={isGeneratingVideo}
-                className="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 text-white px-3 py-1.5 text-xs font-medium transition-all hover:bg-blue-500 active:bg-blue-700 disabled:opacity-40 disabled:pointer-events-none"
               >
+                <Video className="h-3.5 w-3.5" />
                 {isGeneratingVideo && videoJobId
                   ? `生成中... ${videoJobProgress}%`
                   : `生成缺失视频（${missingVideoSceneIds.length}）`}
@@ -358,8 +383,9 @@ export default function ProjectProgressPanel() {
               <button
                 onClick={(e) => { e.stopPropagation(); handleGenerateAllVideos(); }}
                 disabled={isGeneratingVideo}
-                className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-violet-500 to-violet-600 text-white px-3 py-1.5 text-xs font-medium transition-all hover:from-violet-400 hover:to-violet-500 active:from-violet-600 active:to-violet-700 disabled:opacity-40 disabled:pointer-events-none shadow-sm shadow-violet-500/20"
               >
+                <Video className="h-3.5 w-3.5" />
                 {isGeneratingVideo && videoJobId
                   ? `生成中... ${videoJobProgress}%`
                   : "生成全部视频"}
@@ -370,14 +396,13 @@ export default function ProjectProgressPanel() {
 
         {nextAction === "ready_to_export" && (
           <>
-            <p className="text-xs text-green-400">
-              全部镜头视频已完成，可以点击右上角"导出完整视频"。
-            </p>
+            <p className="text-xs text-emerald-400">全部镜头视频已完成，可以点击右上角「导出」导出完整视频。</p>
             <button
               onClick={(e) => { e.stopPropagation(); handleGenerateAllVideos(); }}
               disabled={isGeneratingVideo}
-              className="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded font-medium transition-colors disabled:bg-zinc-700 disabled:text-zinc-500"
+              className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-violet-500 to-violet-600 text-white px-3 py-1.5 text-xs font-medium transition-all hover:from-violet-400 hover:to-violet-500 active:from-violet-600 active:to-violet-700 disabled:opacity-40 disabled:pointer-events-none shadow-sm shadow-violet-500/20"
             >
+              <Video className="h-3.5 w-3.5" />
               {isGeneratingVideo && videoJobId
                 ? `生成中... ${videoJobProgress}%`
                 : "重新生成全部视频"}
@@ -386,30 +411,11 @@ export default function ProjectProgressPanel() {
         )}
 
         {failedVideoCount > 0 && (
-          <p className="text-xs text-red-400/70 pt-1">
+          <p className="text-xs text-rose-400/70 pt-1">
             有 {failedVideoCount} 个镜头曾生成失败，可展开 SceneCard 查看并重试。
           </p>
         )}
       </div>
-
-      {/* Loading indicator for panels */}
-      {loadingPanels && (
-        <p className="text-[10px] text-zinc-500 animate-pulse">正在加载素材状态...</p>
-      )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Stat card sub-component
-// ---------------------------------------------------------------------------
-
-function StatCard({ label, value, done }: { label: string; value: string; done: boolean }) {
-  const colorCls = done ? "text-green-400" : "text-zinc-400";
-  return (
-    <div className="rounded border border-zinc-800 bg-zinc-950/40 p-2.5">
-      <div className="text-[10px] text-zinc-500 mb-0.5">{label}</div>
-      <div className={`text-sm font-medium ${colorCls}`}>{value}</div>
-    </div>
+    </GlassPanel>
   );
 }

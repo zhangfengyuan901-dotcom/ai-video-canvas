@@ -1,11 +1,14 @@
 ﻿// =========================================================================
-// PanelGrid — 三宫格故事板展示
+// PanelGrid — 三宫格故事板展示 (redesigned)
 // 显示单个镜头的 start / middle / end 三张关键帧
 // =========================================================================
 
 import { useProjectStore } from "../../stores/projectStore";
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
+import StatusBadge from "../ui/StatusBadge";
+import GradientButton from "../ui/GradientButton";
+import { ImagePlus, RefreshCw, Upload, X, Check, X as XIcon } from "lucide-react";
 import type { StoryboardPanel, Scene } from "@ai-video-canvas/shared";
 
 interface PanelGridProps {
@@ -165,8 +168,9 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
         {currentProject && (
           <button
             onClick={loadPanels}
-            className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 transition-all hover:bg-white/[0.04] hover:text-zinc-300"
           >
+            <RefreshCw className="h-3 w-3" />
             刷新
           </button>
         )}
@@ -174,12 +178,13 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
         <button
           onClick={handleGenerate}
           disabled={isGeneratingGlob || !currentProject}
-          className={`text-xs px-3 py-1.5 rounded font-medium transition-colors ${
+          className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[10px] font-medium transition-all ${
             isGeneratingGlob
               ? "bg-amber-600/20 text-amber-400 animate-pulse cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500"
+              : "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-blue-400 hover:to-blue-500 disabled:opacity-40 disabled:pointer-events-none"
           }`}
         >
+          <ImagePlus className="h-3 w-3" />
           {isGeneratingGlob ? `生成中... ${jobProgress}%` : panels.length > 0 ? "重生三图" : "生成三图"}
         </button>
       </div>
@@ -191,11 +196,48 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
           return (
             <div
               key={index}
-              className="aspect-video rounded-lg border border-zinc-800 bg-zinc-900 overflow-hidden relative group"
+              className="aspect-video rounded-xl border border-white/[0.06] bg-zinc-900/60 overflow-hidden relative group"
             >
+              {/* Image content */}
+              {panel?.status === "ready" ? (
+                <img
+                  src={`/api/projects/${currentProject?.id}/scenes/${sceneId}/panels/${panel.panelIndex}/image?v=${panel.version}`}
+                  alt={`Panel ${index} (${role})`}
+                  className="h-full w-full object-cover"
+                  loading="lazy"
+                />
+              ) : panel?.status === "generating" ? (
+                <div className="h-full flex items-center justify-center">
+                  <StatusBadge status="running" label="生成中..." pulse />
+                </div>
+              ) : panel?.status === "failed" ? (
+                <div className="h-full flex items-center justify-center p-3">
+                  <div className="text-center">
+                    <StatusBadge status="failed" />
+                    {panel.error && (
+                      <p className="text-[9px] text-zinc-500 mt-1 line-clamp-2">{panel.error}</p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex items-center justify-center">
+                  <span className="text-[10px] text-zinc-600">
+                    {isGeneratingGlob ? "生成中..." : "点击生成"}
+                  </span>
+                </div>
+              )}
+
+              {/* Panel label */}
+              <div className="absolute top-1.5 left-1.5 z-10">
+                <span className="text-[10px] bg-black/60 text-zinc-300 px-1.5 py-0.5 rounded-md backdrop-blur-sm leading-none">
+                  {label}
+                </span>
+              </div>
+
               {/* Upload/clear overlay */}
-              <div className="absolute bottom-1 left-1 right-1 z-20 hidden group-hover:flex gap-1 justify-center">
-                <label className="text-[10px] bg-black/70 hover:bg-black text-white px-1.5 py-0.5 rounded cursor-pointer transition-colors">
+              <div className="absolute inset-x-1 bottom-1 z-20 hidden group-hover:flex gap-1 justify-center">
+                <label className="inline-flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-sm text-zinc-300 px-2 py-1 text-[10px] cursor-pointer transition-colors hover:bg-black/90 hover:text-white">
+                  <Upload className="h-2.5 w-2.5" />
                   {uploadingPanel === index ? "上传中..." : "上传"}
                   <input
                     type="file"
@@ -205,68 +247,22 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
                     onChange={(e) => handleUpload(index, e.target.files?.[0])}
                   />
                 </label>
-
                 {panel?.status === "ready" && (
                   <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleClear(index);
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handleClear(index); }}
                     disabled={clearingPanel !== null}
-                    className="text-[10px] bg-red-700/80 hover:bg-red-600 text-white px-1.5 py-0.5 rounded transition-colors disabled:opacity-50"
+                    className="inline-flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-sm text-rose-300 px-2 py-1 text-[10px] transition-colors hover:bg-black/90 hover:text-rose-200 disabled:opacity-50"
                   >
+                    <X className="h-2.5 w-2.5" />
                     {clearingPanel === index ? "取消中..." : "取消"}
                   </button>
                 )}
               </div>
-
-              {/* Panel label */}
-              <div className="absolute top-1.5 left-1.5 z-10">
-                <span className="text-[10px] bg-black/60 text-zinc-300 px-1.5 py-0.5 rounded">
-                  {label}
-                </span>
-              </div>
-
-              {/* Content */}
-              {!panel && (
-                <div className="h-full flex items-center justify-center">
-                  <span className="text-xs text-zinc-600">
-                    {isGeneratingGlob ? "生成中..." : "点击「生成三图」"}
-                  </span>
-                </div>
-              )}
-
-              {panel?.status === "generating" && (
-                <div className="h-full flex items-center justify-center">
-                  <span className="text-xs text-amber-500 animate-pulse">生成中...</span>
-                </div>
-              )}
-
-              {panel?.status === "failed" && (
-                <div className="h-full flex items-center justify-center p-2">
-                  <div className="text-center">
-                    <span className="text-xs text-red-400 block">生成失败</span>
-                    {panel.error && (
-                      <span className="text-[10px] text-zinc-500 mt-1 block line-clamp-2">
-                        {panel.error}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {panel?.status === "ready" && (
-                <img
-                  src={`/api/projects/${currentProject?.id}/scenes/${sceneId}/panels/${panel.panelIndex}/image?v=${panel.version}`}
-                  alt={`Panel ${index} (${role})`}
-                  className="h-full w-full object-cover"
-                  loading="lazy"
-                />
-              )}
             </div>
           );
         })}
       </div>
+
       {/* Storyboard Review Controls */}
       {panels.filter(p => p.status === "ready" && p.localPath).length === 3 && currentProject && (
         <div className="flex items-center gap-2 pt-1">
@@ -285,8 +281,9 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
                 console.error("Storyboard approve failed:", err);
               }
             }}
-            className="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-0.5 rounded transition-colors"
+            className="inline-flex items-center gap-1 rounded-md bg-emerald-600/80 hover:bg-emerald-600 text-white px-2 py-1 text-[10px] font-medium transition-colors"
           >
+            <Check className="h-3 w-3" />
             审核通过
           </button>
           <button
@@ -303,13 +300,13 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
                 console.error("Storyboard reject failed:", err);
               }
             }}
-            className="text-[10px] bg-red-700 hover:bg-red-600 text-white px-2 py-0.5 rounded transition-colors"
+            className="inline-flex items-center gap-1 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white px-2 py-1 text-[10px] font-medium transition-colors"
           >
+            <XIcon className="h-3 w-3" />
             驳回
           </button>
         </div>
       )}
-
     </div>
   );
 }

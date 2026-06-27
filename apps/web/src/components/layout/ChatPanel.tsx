@@ -1,23 +1,37 @@
-// =========================================================================
-// ChatPanel — 左侧聊天框
+﻿// =========================================================================
+// ChatPanel — 左侧聊天框 (redesigned)
 // =========================================================================
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useChatStore } from "../../stores/chatStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { useApi } from "../../hooks/useApi";
+import FlowStepNav from "../ui/FlowStepNav";
+import EmptyState from "../ui/EmptyState";
+import GradientButton from "../ui/GradientButton";
+import StatusBadge from "../ui/StatusBadge";
+import { MessageSquarePlus, Send, Bot, User } from "lucide-react";
 import type { ChatMessage } from "@ai-video-canvas/shared";
+import type { StepStatus } from "../ui/FlowStepNav";
 
 export default function ChatPanel() {
   const { messages, isGenerating, error, addMessage, setGenerating, setError } = useChatStore();
-  const { currentProject, setScenes, setCurrentProject } = useProjectStore();
+  const { currentProject, scenes, setScenes, setCurrentProject } = useProjectStore();
   const { post } = useApi();
 
   const [input, setInput] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Auto‑scroll to bottom
+  // Compute pipeline steps
+  const pipelineSteps = [
+    { id: "script", label: "脚本", status: (scenes.length > 0 ? "completed" : "inactive") as StepStatus },
+    { id: "storyboard", label: "故事板", status: (scenes.some((s) => s.storyboardReviewStatus === "approved") ? "completed" : scenes.length > 0 ? "active" : "inactive") as StepStatus },
+    { id: "video", label: "视频", status: ("inactive") as StepStatus },
+    { id: "export", label: "导出", status: ("inactive") as StepStatus },
+  ];
+
+  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -94,75 +108,117 @@ export default function ChatPanel() {
   }, [input, isGenerating, currentProject, addMessage, setError, setGenerating, setScenes, setCurrentProject, post]);
 
   return (
-    <aside className="w-80 bg-zinc-900 border-r border-zinc-800 flex flex-col shrink-0">
-      {/* Header */}
-      <div className="h-10 border-b border-zinc-800 flex items-center px-3">
-        <span className="text-xs font-medium text-zinc-400 tracking-wide">聊天 · 脚本生成</span>
+    <aside className="w-[340px] bg-[#08090c] border-r border-white/[0.06] flex flex-col shrink-0">
+      {/* Header with FlowStepNav */}
+      <div className="h-11 border-b border-white/[0.06] flex items-center px-4 gap-2 shrink-0">
+        <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">流程</span>
+        <div className="flex-1" />
+        <FlowStepNav steps={pipelineSteps} />
       </div>
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-3 space-y-3">
-        {messages.length === 0 && (
-          <p className="text-xs text-zinc-600 text-center mt-8">
-            输入创意，让 AI 帮你生成视频脚本
-          </p>
+        {messages.length === 0 ? (
+          <EmptyState
+            icon={<MessageSquarePlus className="h-8 w-8" />}
+            title="开始创作"
+            message="输入视频创意描述，AI 将自动生成分镜脚本。您可以输入完整的脚本、创意摘要或关键词。"
+            compact
+            className="mt-8"
+          />
+        ) : (
+          messages.map((m) => (
+            <div key={m.id} className="flex gap-2">
+              {/* Avatar */}
+              <div
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${
+                  m.role === "user"
+                    ? "bg-gradient-to-br from-blue-500 to-violet-600"
+                    : m.role === "system"
+                      ? "bg-rose-600/20"
+                      : "bg-zinc-800"
+                }`}
+              >
+                {m.role === "user" ? (
+                  <User className="h-3.5 w-3.5 text-white" />
+                ) : m.role === "system" ? (
+                  <span className="text-[10px] text-rose-400 font-bold">!</span>
+                ) : (
+                  <Bot className="h-3.5 w-3.5 text-zinc-400" />
+                )}
+              </div>
+
+              {/* Content */}
+              <div className="flex-1 min-w-0">
+                <div
+                  className={`text-sm rounded-xl px-3 py-2 ${
+                    m.role === "user"
+                      ? "bg-blue-600/15 text-blue-200 border border-blue-500/10"
+                      : m.role === "system"
+                        ? "bg-rose-600/10 text-rose-300 border border-rose-500/10"
+                        : "bg-white/[0.04] text-zinc-300 border border-white/[0.06]"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap text-[13px] leading-relaxed">{m.content}</p>
+                </div>
+                <span className="text-[10px] text-zinc-600 mt-1 block px-1">
+                  {new Date(m.createdAt).toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+          ))
         )}
-        {messages.map((m) => (
-          <div
-            key={m.id}
-            className={`text-sm rounded-lg px-3 py-2 max-w-full ${
-              m.role === "user"
-                ? "bg-blue-600/20 text-blue-200 ml-4"
-                : m.role === "system"
-                  ? "bg-red-600/10 text-red-300"
-                  : "bg-zinc-800 text-zinc-300 mr-4"
-            }`}
-          >
-            <p className="whitespace-pre-wrap">{m.content}</p>
-            <span className="text-[10px] text-zinc-500 mt-1 block">
-              {new Date(m.createdAt).toLocaleTimeString()}
-            </span>
-          </div>
-        ))}
 
         {/* Generating indicator */}
         {isGenerating && (
-          <div className="text-xs text-zinc-500 animate-pulse px-1">
-            AI 正在生成脚本...
+          <div className="flex items-center gap-2 px-1">
+            <div className="flex gap-0.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:0ms]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:150ms]" />
+              <span className="h-1.5 w-1.5 rounded-full bg-blue-500 animate-bounce [animation-delay:300ms]" />
+            </div>
+            <span className="text-[11px] text-zinc-500">AI 正在生成脚本...</span>
           </div>
         )}
 
         {/* Error */}
         {error && !isGenerating && (
-          <div className="text-xs text-red-400 bg-red-600/10 rounded px-3 py-2">
+          <div className="text-[11px] text-rose-400 bg-rose-600/10 border border-rose-500/10 rounded-xl px-3 py-2">
             {error}
           </div>
         )}
       </div>
 
       {/* Input */}
-      <div className="p-3 border-t border-zinc-800">
+      <div className="p-3 border-t border-white/[0.06]">
         <div className="flex gap-2">
-          <input
+          <textarea
             ref={inputRef}
-            type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+              }
+            }}
             placeholder="输入视频创意..."
             disabled={isGenerating}
-            className="flex-1 bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600 disabled:opacity-50"
+            rows={1}
+            className="flex-1 bg-zinc-800/60 border border-zinc-700/50 rounded-xl px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/50 disabled:opacity-50 resize-none min-h-[36px] max-h-[80px]"
           />
           <button
             onClick={sendMessage}
             disabled={isGenerating || !input.trim() || !currentProject}
-            className="bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white text-sm px-4 py-2 rounded font-medium transition-colors"
+            className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 transition-all hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700 disabled:opacity-40 disabled:pointer-events-none shrink-0"
           >
-            生成
+            <Send className="h-4 w-4" />
           </button>
         </div>
         {!currentProject && (
-          <p className="text-[10px] text-amber-500 mt-1.5">请先在 Canvas 中创建项目</p>
+          <p className="text-[10px] text-amber-500/70 mt-1.5 px-1">
+            请先在画布中创建或选择项目
+          </p>
         )}
       </div>
     </aside>

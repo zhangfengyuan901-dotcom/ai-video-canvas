@@ -1,11 +1,15 @@
-// =========================================================================
-// SceneList — 镜头列表展示
+﻿// =========================================================================
+// SceneList — 镜头列表展示 (redesigned)
 // =========================================================================
 
 import { useProjectStore } from "../../stores/projectStore";
 import { useApi } from "../../hooks/useApi";
 import SceneCard from "./SceneCard";
 import { useCallback, useState } from "react";
+import GlassPanel from "../ui/GlassPanel";
+import SectionHeader from "../ui/SectionHeader";
+import EmptyState from "../ui/EmptyState";
+import { Film } from "lucide-react";
 
 export default function SceneList() {
   const api = useApi();
@@ -34,20 +38,19 @@ export default function SceneList() {
 
   if (scenes.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-zinc-600 text-sm">还没有镜头</p>
-        <p className="text-zinc-700 text-xs mt-1">
-          在左侧聊天框输入创意，点击"生成"创建镜头脚本
-        </p>
-      </div>
+      <GlassPanel className="p-4">
+        <EmptyState
+          compact
+          icon={<Film className="h-6 w-6" />}
+          title="还没有镜头"
+          message="在左侧输入创意，点击「创建脚本」即可生成分镜脚本"
+        />
+      </GlassPanel>
     );
   }
 
   return (
     <div>
-      <h3 className="text-sm font-medium text-zinc-400 mb-3">
-        镜头列表 · {scenes.length} 个镜头
-      </h3>
       <div className="grid gap-3 grid-cols-1 lg:grid-cols-2">
         {scenes.map((scene) => {
           const isSelected = selectedSceneId === scene.id;

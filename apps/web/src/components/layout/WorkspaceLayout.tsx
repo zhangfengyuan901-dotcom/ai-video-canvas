@@ -1,5 +1,5 @@
 ﻿// =========================================================================
-// WorkspaceLayout — 三栏 + 底部时间线布局容器
+// WorkspaceLayout — 三栏 + 底部时间线布局容器 (redesigned)
 // =========================================================================
 
 import ChatPanel from "./ChatPanel";
@@ -8,7 +8,7 @@ import TimelinePanel from "../timeline/TimelinePanel";
 
 export default function WorkspaceLayout() {
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-hidden relative">
       {/* 左侧聊天 + 中间画布 */}
       <div className="flex-1 flex overflow-hidden">
         <ChatPanel />

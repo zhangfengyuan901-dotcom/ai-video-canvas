@@ -1,10 +1,16 @@
-// =========================================================================
-// ScriptInputPanel — 脚本输入区 + 参考图上传 + 创建脚本
+﻿// =========================================================================
+// ScriptInputPanel — 脚本输入区 + 参考图上传 + 创建脚本 (redesigned)
 // =========================================================================
 
 import { useState, useEffect, useCallback } from "react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useApi } from "../../hooks/useApi";
+import GlassPanel from "../ui/GlassPanel";
+import SectionHeader from "../ui/SectionHeader";
+import GradientButton from "../ui/GradientButton";
+import StatusBadge from "../ui/StatusBadge";
+import LoadingState from "../ui/LoadingState";
+import { ImagePlus, Sparkles, FileText, X } from "lucide-react";
 import type { ReferenceAsset } from "@ai-video-canvas/shared";
 
 export default function ScriptInputPanel() {
@@ -84,91 +90,126 @@ export default function ScriptInputPanel() {
   }
 
   const assetTypes = [
-    { type: "character", label: "人物" },
-    { type: "scene", label: "场景" },
-    { type: "product", label: "产品" },
-    { type: "first_frame", label: "首帧" },
+    { type: "character", label: "人物", icon: "👤" },
+    { type: "scene", label: "场景", icon: "🏙" },
+    { type: "product", label: "产品", icon: "📦" },
+    { type: "first_frame", label: "首帧", icon: "🎬" },
   ];
 
   return (
-    <section className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-4 space-y-3">
-      <h3 className="text-sm font-medium text-zinc-300">脚本输入</h3>
-
-      {/* Text area */}
-      <textarea
-        value={message}
-        onChange={(e) => setMessage(e.target.value)}
-        placeholder={currentProject ? '输入完整脚本或创意，并上传参考图，AI 会帮你拆成分镜脚本。' : '请先创建或打开一个项目'}
-        disabled={!currentProject || generating}
-        rows={5}
-        className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600 resize-none disabled:opacity-50"
+    <GlassPanel className="p-4 space-y-4">
+      <SectionHeader
+        title="脚本输入"
+        subtitle="输入创意描述并上传参考图，AI 将拆分成可生成的分镜脚本"
       />
 
+      {/* Text area */}
+      <div className="relative">
+        <textarea
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+          placeholder={currentProject ? "输入完整脚本或创意描述，并上传参考图..." : "请先创建或打开一个项目"}
+          disabled={!currentProject || generating}
+          rows={4}
+          className="w-full bg-zinc-800/50 border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/40 focus:bg-zinc-800/80 resize-none disabled:opacity-50 transition-colors"
+        />
+        {message.trim() && (
+          <div className="absolute bottom-3 right-3">
+            <StatusBadge status="default" label={`${message.length} 字符`} />
+          </div>
+        )}
+      </div>
+
       {/* Reference upload grid */}
-      <div className="flex gap-2 flex-wrap">
-        {assetTypes.map(({ type, label }) => {
-          const hasAsset = referenceAssets.some((a) => a.type === type);
-          return (
-            <label
-              key={type}
-              className={`relative flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded cursor-pointer border transition-colors ${
-                hasAsset ? "bg-green-900/30 border-green-700/50 text-green-400" : "bg-zinc-800 border-zinc-700 text-zinc-400 hover:border-zinc-600"
-              }`}
-            >
-              <span>{hasAsset ? "✓" : "+"}</span>
-              <span>{label}参考图</span>
-              <input
-                type="file"
-                accept="image/png,image/jpeg,image/webp"
-                className="hidden"
-                disabled={uploadingType !== null}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleUpload(type, file);
-                }}
-              />
-            </label>
-          );
-        })}
+      <div>
+        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 mb-2">参考图（可选）</p>
+        <div className="flex gap-2 flex-wrap">
+          {assetTypes.map(({ type, label, icon }) => {
+            const hasAsset = referenceAssets.some((a) => a.type === type);
+            return (
+              <label
+                key={type}
+                className={`relative flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl cursor-pointer border transition-all ${
+                  hasAsset
+                    ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+                    : "bg-white/[0.03] border-white/[0.08] text-zinc-400 hover:border-white/[0.15] hover:text-zinc-300"
+                }`}
+              >
+                <span className="text-[11px]">{hasAsset ? "✓" : icon}</span>
+                <span>{label}</span>
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp"
+                  className="hidden"
+                  disabled={uploadingType !== null}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleUpload(type, file);
+                  }}
+                />
+              </label>
+            );
+          })}
+        </div>
       </div>
 
       {/* Reference assets list */}
       {referenceAssets.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {referenceAssets.map((asset) => (
-            <div key={asset.id} className="flex items-center gap-1.5 bg-zinc-800/60 rounded px-2 py-1">
-              <img
-                src={`/api/projects/${currentProject?.id}/reference-assets/${asset.id}/image`}
-                alt=""
-                className="w-8 h-8 rounded object-cover"
-              />
-              <span className="text-[10px] text-zinc-400">{asset.type}</span>
-              {asset.label && <span className="text-[10px] text-zinc-500 truncate max-w-[60px]">{asset.label}</span>}
-              <button
-                onClick={() => handleDeleteAsset(asset.id)}
-                className="text-[10px] text-red-400 hover:text-red-300 ml-1"
-              >
-                ×
-              </button>
-            </div>
-          ))}
+        <div>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 mb-2">已上传 ({referenceAssets.length})</p>
+          <div className="flex flex-wrap gap-2">
+            {referenceAssets.map((asset) => (
+              <div key={asset.id} className="group relative flex items-center gap-2 bg-white/[0.04] border border-white/[0.06] rounded-xl p-1.5 pr-3">
+                <img
+                  src={`/api/projects/${currentProject?.id}/reference-assets/${asset.id}/image`}
+                  alt=""
+                  className="h-10 w-10 rounded-lg object-cover ring-1 ring-white/[0.06]"
+                />
+                <div className="min-w-0">
+                  <p className="text-[11px] text-zinc-400 capitalize">{asset.type}</p>
+                  {asset.label && <p className="text-[10px] text-zinc-500 truncate max-w-[60px]">{asset.label}</p>}
+                </div>
+                <button
+                  onClick={() => handleDeleteAsset(asset.id)}
+                  className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
       {/* Error */}
-      {error && <p className="text-xs text-red-400">{error}</p>}
+      {error && (
+        <div className="text-xs text-rose-400 bg-rose-600/10 border border-rose-500/10 rounded-xl px-3 py-2">
+          {error}
+        </div>
+      )}
+
+      {/* Loading */}
+      {generating && (
+        <LoadingState variant="pulse" message="AI 正在分析并生成脚本..." />
+      )}
 
       {/* Create button */}
-      <div className="flex gap-2 items-center">
+      <div className="flex gap-3 items-center">
         <button
           onClick={handleCreateScript}
           disabled={!currentProject || !message.trim() || generating}
-          className="text-xs bg-blue-600 hover:bg-blue-500 disabled:bg-zinc-700 disabled:text-zinc-500 text-white px-4 py-1.5 rounded font-medium transition-colors"
+          className="inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-b from-blue-500 to-blue-600 text-white px-4 py-2 text-xs font-medium transition-all hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700 disabled:opacity-40 disabled:pointer-events-none shadow-sm shadow-blue-500/20"
         >
+          <Sparkles className="h-3.5 w-3.5" />
           {generating ? "生成中..." : "创建脚本"}
         </button>
-        {!currentProject && <p className="text-[10px] text-amber-500">请先创建或选择项目</p>}
+        {!currentProject && (
+          <span className="text-[10px] text-amber-500/70">请先创建或选择项目</span>
+        )}
+        {currentProject && scenes.length > 0 && (
+          <span className="text-[10px] text-zinc-500">已有 {scenes.length} 个镜头，重新生成将会替换</span>
+        )}
       </div>
-    </section>
+    </GlassPanel>
   );
 }
