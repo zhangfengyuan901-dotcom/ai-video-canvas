@@ -1,11 +1,11 @@
-// =========================================================================
+﻿// =========================================================================
 // Project API Routes
 // =========================================================================
 
 import { FastifyInstance } from "fastify";
 import { v4 as uuid } from "uuid";
 import { db } from "../db/index.js";
-import { projects, scenes } from "../db/schema.js";
+import { projects, scenes, storyboardPanels, videoClips } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { createProjectSchema, updateSceneSchema, reorderScenesSchema } from "@ai-video-canvas/shared";
 import type { Scene } from "@ai-video-canvas/shared";
@@ -156,6 +156,59 @@ export async function projectRoutes(app: FastifyInstance) {
     const updated = db.select().from(scenes).where(eq(scenes.id, request.params.id)).get();
     return { success: true, data: updated };
   });
+
+  
+  // ---- Create empty scene ------------------------------------------------
+  // POST /api/projects/:projectId/scenes
+
+  app.post<{ Params: { projectId: string } }>(
+    "/projects/:projectId/scenes",
+    async (request, reply) => {
+      const project = db.select().from(projects).where(eq(projects.id, request.params.projectId)).get();
+      if (!project) return reply.status(404).send({ success: false, error: "Project not found" });
+
+      const now = new Date().toISOString();
+      const maxOrder = db.select().from(scenes).where(eq(scenes.projectId, request.params.projectId)).all().length;
+      const id = uuid();
+
+      db.insert(scenes).values({
+        id, projectId: request.params.projectId, order: maxOrder + 1,
+        title: "新段落", summary: "", scriptText: "", visualDescription: "",
+        charactersJson: "[]", location: "", shotSize: "", cameraAngle: "",
+        cameraMovement: "", motionPrompt: "", dialogue: null, audioEffects: null,
+        duration: 8, status: "draft", locked: 0,
+        createdAt: now, updatedAt: now,
+      }).run();
+
+      const created = db.select().from(scenes).where(eq(scenes.id, id)).get();
+      return reply.status(201).send({ success: true, data: created });
+    },
+  );
+
+  // ---- Delete scene -------------------------------------------------------
+  // DELETE /api/scenes/:id
+
+  app.delete<{ Params: { id: string } }>(
+    "/scenes/:id",
+    async (request, reply) => {
+      const scene = db.select().from(scenes).where(eq(scenes.id, request.params.id)).get();
+      if (!scene) return reply.status(404).send({ success: false, error: "Scene not found" });
+
+      // Delete related data
+      db.delete(storyboardPanels).where(eq(storyboardPanels.sceneId, request.params.id)).run();
+      db.delete(videoClips).where(eq(videoClips.sceneId, request.params.id)).run();
+      db.delete(scenes).where(eq(scenes.id, request.params.id)).run();
+
+      // Reorder remaining scenes in the same project
+      const remaining = db.select().from(scenes).where(eq(scenes.projectId, scene.projectId)).orderBy(scenes.order).all();
+      const now = new Date().toISOString();
+      for (let i = 0; i < remaining.length; i++) {
+        db.update(scenes).set({ order: i + 1, updatedAt: now }).where(eq(scenes.id, remaining[i].id)).run();
+      }
+
+      return { success: true, data: { deleted: true } };
+    },
+  );
 
   // ---- Reorder scenes --------------------------------------------------
 

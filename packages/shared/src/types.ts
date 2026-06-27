@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // @ai-video-canvas/shared -- Shared types for frontend and backend
 // =========================================================================
 
@@ -31,6 +31,8 @@ export interface StyleBible {
 
 // ---- Scene -------------------------------------------------------------
 
+export type ReviewStatus = "pending" | "approved" | "rejected";
+
 export type SceneStatus =
   | "draft"
   | "storyboard_generating"
@@ -58,6 +60,9 @@ export interface Scene {
   duration: number; // Default: 8
   status: SceneStatus;
   locked: boolean;
+  storyboardReviewStatus?: ReviewStatus;
+  storyboardReviewNote?: string | null;
+  storyboardApprovedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -67,6 +72,14 @@ export interface Scene {
 export type PanelRole = "start" | "middle" | "end";
 export type PanelStatus = "queued" | "generating" | "ready" | "failed";
 export type PanelSourceType = "ai" | "upload";
+
+export type ReferenceAssetType =
+  | "character"
+  | "scene"
+  | "product"
+  | "first_frame"
+  | "style"
+  | "other";
 
 export interface StoryboardPanel {
   id: string;
@@ -91,6 +104,23 @@ export interface StoryboardPanel {
   updatedAt: string;
 }
 
+
+
+export interface ReferenceAsset {
+  id: string;
+  projectId: string;
+  type: ReferenceAssetType;
+  label?: string | null;
+  description?: string | null;
+  localPath: string;
+  mimeType: string;
+  originalFilename?: string | null;
+  width?: number | null;
+  height?: number | null;
+  fileSize?: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface RunningHubTaskUsageDto {
   consumeMoney?: string | number | null;
@@ -167,6 +197,10 @@ export interface VideoClip {
   status: ClipStatus;
   error?: string;
   isCurrent?: boolean;
+  reviewStatus?: ReviewStatus;
+  reviewNote?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
   diagnostics?: RunningHubClipDiagnostics;
   createdAt: string;
   updatedAt: string;

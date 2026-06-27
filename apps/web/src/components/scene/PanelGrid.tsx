@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // PanelGrid — 三宫格故事板展示
 // 显示单个镜头的 start / middle / end 三张关键帧
 // =========================================================================
@@ -6,7 +6,7 @@
 import { useProjectStore } from "../../stores/projectStore";
 import { useEffect, useState } from "react";
 import { useApi } from "../../hooks/useApi";
-import type { StoryboardPanel } from "@ai-video-canvas/shared";
+import type { StoryboardPanel, Scene } from "@ai-video-canvas/shared";
 
 interface PanelGridProps {
   sceneId: string;
@@ -18,7 +18,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
   const isGeneratingGlob = useProjectStore((s) => s.isGeneratingStoryboard);
   const setPanels = useProjectStore((s) => s.setPanels);
   const currentProject = useProjectStore((s) => s.currentProject);
-  const { post, get } = useApi();
+  const { post, get, patch } = useApi();
 
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobProgress, setJobProgress] = useState<number>(0);
@@ -267,6 +267,49 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
           );
         })}
       </div>
+      {/* Storyboard Review Controls */}
+      {panels.filter(p => p.status === "ready" && p.localPath).length === 3 && currentProject && (
+        <div className="flex items-center gap-2 pt-1">
+          <span className="text-[10px] text-zinc-500">故事板审核：</span>
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await patch(`/projects/${currentProject.id}/scenes/${sceneId}/storyboard-review`, { status: "approved" });
+                await loadPanels();
+                if (currentProject) {
+                  const scenes = await get<Scene[]>(`/projects/${currentProject.id}/scenes`);
+                  useProjectStore.getState().setScenes(scenes);
+                }
+              } catch (err) {
+                console.error("Storyboard approve failed:", err);
+              }
+            }}
+            className="text-[10px] bg-green-700 hover:bg-green-600 text-white px-2 py-0.5 rounded transition-colors"
+          >
+            审核通过
+          </button>
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                await patch(`/projects/${currentProject.id}/scenes/${sceneId}/storyboard-review`, { status: "rejected", note: "用户驳回" });
+                await loadPanels();
+                if (currentProject) {
+                  const scenes = await get<Scene[]>(`/projects/${currentProject.id}/scenes`);
+                  useProjectStore.getState().setScenes(scenes);
+                }
+              } catch (err) {
+                console.error("Storyboard reject failed:", err);
+              }
+            }}
+            className="text-[10px] bg-red-700 hover:bg-red-600 text-white px-2 py-0.5 rounded transition-colors"
+          >
+            驳回
+          </button>
+        </div>
+      )}
+
     </div>
   );
 }

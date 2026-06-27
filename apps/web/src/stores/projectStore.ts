@@ -3,7 +3,7 @@
 // =========================================================================
 
 import { create } from "zustand";
-import type { Project, Scene, StoryboardPanel, VideoClip } from "@ai-video-canvas/shared";
+import type { Project, Scene, StoryboardPanel, VideoClip, ReferenceAsset } from "@ai-video-canvas/shared";
 
 interface ProjectState {
   projects: Project[];
@@ -27,6 +27,13 @@ interface ProjectState {
   setPanels: (sceneId: string, panels: StoryboardPanel[]) => void;
   setGeneratingStoryboard: (v: boolean) => void;
 
+  // Reference assets
+  referenceAssets: ReferenceAsset[];
+  setReferenceAssets: (list: ReferenceAsset[]) => void;
+  addReferenceAsset: (asset: ReferenceAsset) => void;
+  updateReferenceAsset: (assetId: string, updates: Partial<ReferenceAsset>) => void;
+  removeReferenceAsset: (assetId: string) => void;
+
   // Video actions
   setClips: (sceneId: string, clips: VideoClip[]) => void;
   setAllClips: (clips: VideoClip[]) => void;
@@ -42,6 +49,7 @@ export const useProjectStore = create<ProjectState>((set) => ({
   isGeneratingStoryboard: false,
   clipsByScene: {},
   isGeneratingVideo: false,
+  referenceAssets: [],
 
   setProjects: (projects) => set({ projects }),
   setCurrentProject: (currentProject) => set({ currentProject }),
@@ -78,4 +86,15 @@ export const useProjectStore = create<ProjectState>((set) => ({
       return { clipsByScene: byScene };
     }),
   setGeneratingVideo: (isGeneratingVideo) => set({ isGeneratingVideo }),
+
+  setReferenceAssets: (referenceAssets) => set({ referenceAssets }),
+  addReferenceAsset: (asset) => set((s) => ({ referenceAssets: [...s.referenceAssets, asset] })),
+  updateReferenceAsset: (assetId, updates) =>
+    set((s) => ({
+      referenceAssets: s.referenceAssets.map((a) => (a.id === assetId ? { ...a, ...updates } : a)),
+    })),
+  removeReferenceAsset: (assetId) =>
+    set((s) => ({
+      referenceAssets: s.referenceAssets.filter((a) => a.id !== assetId),
+    })),
 }));

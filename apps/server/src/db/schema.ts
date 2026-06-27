@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // Drizzle ORM Schema -- Phase 4: +video_clips
 // =========================================================================
 
@@ -41,6 +41,9 @@ export const scenes = sqliteTable("scenes", {
   status: text("status").notNull().default("draft"),
   locked: integer("locked").notNull().default(0),
   currentClipId: text("current_clip_id"),
+  storyboardReviewStatus: text("storyboard_review_status").notNull().default("pending"),
+  storyboardReviewNote: text("storyboard_review_note"),
+  storyboardApprovedAt: text("storyboard_approved_at"),
   createdAt: text("created_at").notNull(),
   updatedAt: text("updated_at").notNull(),
 });
@@ -103,8 +106,31 @@ export const videoClips = sqliteTable("video_clips", {
   aspectRatio: text("aspect_ratio").notNull().default("16:9"),
   status: text("status").notNull().default("queued"),
   error: text("error"),
+  reviewStatus: text("review_status").notNull().default("pending"),
+  reviewNote: text("review_note"),
+  approvedAt: text("approved_at"),
+  rejectedAt: text("rejected_at"),
   createdAt: text("created_at").notNull(),
  updatedAt: text("updated_at").notNull(),
+});
+
+
+// ---- reference_assets -------------------------------------------------
+
+export const referenceAssets = sqliteTable("reference_assets", {
+  id: text("id").primaryKey(),
+  projectId: text("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
+  type: text("type").notNull(),
+  label: text("label"),
+  description: text("description"),
+  localPath: text("local_path").notNull(),
+  mimeType: text("mime_type").notNull(),
+  originalFilename: text("original_filename"),
+  width: integer("width"),
+  height: integer("height"),
+  fileSize: integer("file_size"),
+  createdAt: text("created_at").notNull(),
+  updatedAt: text("updated_at").notNull(),
 });
 
  // ---- jobs (Phase 4) -------------------------------------------------

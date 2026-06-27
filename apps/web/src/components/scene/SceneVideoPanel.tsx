@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // SceneVideoPanel -- Individual scene video version panel
 // Display current video, generate video, switch versions
 // =========================================================================
@@ -15,7 +15,7 @@ interface SceneVideoPanelProps {
 }
 
 export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
-  var { get } = useApi();
+  var { get, patch } = useApi();
   var { fetchClips, getCurrentClip, selectVersion, retryFailedClip } = useVideoClips();
   var currentProject = useProjectStore(function (s) { return s.currentProject; });
   var isGeneratingVideo = useProjectStore(function (s) { return s.isGeneratingVideo; });
@@ -167,7 +167,54 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
         </button>
       </div>
 
-      {/* Content */}
+      
+      {/* Review Status & Actions */}
+      {currentClip && currentClip.status === "ready" && (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+            currentClip.reviewStatus === "approved"
+              ? "bg-green-600/20 text-green-400"
+              : currentClip.reviewStatus === "rejected"
+                ? "bg-red-600/20 text-red-400"
+                : "bg-amber-600/20 text-amber-400"
+          }`}>
+            {currentClip.reviewStatus === "approved" ? "已审核通过" : currentClip.reviewStatus === "rejected" ? "已驳回" : "待审核"}
+          </span>
+          {currentClip.reviewStatus !== "approved" && (
+            <>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await patch(`/projects/${currentProject!.id}/scenes/${sceneId}/videos/${currentClip!.id}/review`, { status: "approved", setCurrent: true });
+                    await fetchClips();
+                  } catch (err) {
+                    console.error("Video approve failed:", err);
+                  }
+                }}
+                className="text-[10px] bg-green-700 hover:bg-green-600 text-white px-1.5 py-0.5 rounded transition-colors"
+              >
+                通过并设为当前版本
+              </button>
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  try {
+                    await patch(`/projects/${currentProject!.id}/scenes/${sceneId}/videos/${currentClip!.id}/review`, { status: "rejected", note: "用户驳回" });
+                    await fetchClips();
+                  } catch (err) {
+                    console.error("Video reject failed:", err);
+                  }
+                }}
+                className="text-[10px] bg-red-700 hover:bg-red-600 text-white px-1.5 py-0.5 rounded transition-colors"
+              >
+                驳回此版本
+              </button>
+            </>
+          )}
+        </div>
+      )}
+{/* Content */}
       {currentClip && currentClip.status === "ready" ? (
         <div>
           <video

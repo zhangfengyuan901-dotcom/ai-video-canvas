@@ -10,8 +10,9 @@ import { promisify } from "node:util";
 import { v4 as uuid } from "uuid";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
-import { videoClips, scenes, projects } from "../../db/schema.js";
+import { projects } from "../../db/schema.js";
 import { getJob, markRunning, markProgress, markSuccess, markFailed } from "./JobService.js";
+import { buildExportPreflight } from "../export/ExportPreflightService.js";
 
 const execFileAsync = promisify(execFile);
 const DATA_ROOT = resolve(import.meta.dirname, "../../../../../local-data");
@@ -39,37 +40,25 @@ export async function runExportJob(
     if (!project) { markFailed(jobId, "Project not found"); return; }
     markProgress(jobId, 10);
 
-    // ---- Step 2: 读取 scenes + 收集 clip 路径 ----
-    const sceneRows = db.select().from(scenes).where(eq(scenes.projectId, projectId)).orderBy(scenes.order).all();
-    if (sceneRows.length === 0) { markFailed(jobId, "项目没有镜头"); return; }
+    // ---- Step 2: 使用 ExportPreflightService 选择 clip ----
+    const preflight = buildExportPreflight(projectId);
 
+    if (!preflight.canExport && !allowPartial) {
+      markFailed(jobId, "导出前检查未通过");
+      return;
+    }
+
+    if (!preflight.canPartialExport) {
+      markFailed(jobId, "没有可导出的视频片段");
+      return;
+    }
+
+    const exportItems = preflight.exportItems;
     const clipPaths: string[] = [];
-    const missingScenes: string[] = [];
+    const missingScenes = preflight.missingScenes;
 
-    for (const scene of sceneRows) {
-      // 优先使用当前版本（current_clip_id）
-      if (scene.currentClipId) {
-        const currentClip = db.select().from(videoClips).where(eq(videoClips.id, scene.currentClipId)).get();
-        if (currentClip && currentClip.status === "ready") {
-          if (!currentClip.localPath || !existsSync(currentClip.localPath)) {
-            missingScenes.push(`${scene.title || `Scene ${scene.order}`}（当前版本文件丢失）`);
-            continue;
-          }
-          clipPaths.push(currentClip.localPath);
-          continue;
-        }
-      }
-
-      // 兜底：取最新 ready 版本
-      const clips = db.select().from(videoClips).where(eq(videoClips.sceneId, scene.id)).all()
-        .filter((c) => c.status === "ready")
-        .sort((a, b) => b.version - a.version);
-      const bestClip = clips[0];
-      if (!bestClip || !bestClip.localPath || !existsSync(bestClip.localPath)) {
-        missingScenes.push(scene.title || `Scene ${scene.order}（无可用版本）`);
-        continue;
-      }
-      clipPaths.push(bestClip.localPath);
+    for (const item of exportItems) {
+      clipPaths.push(item.localPath);
     }
 
     if (clipPaths.length === 0) {
@@ -78,7 +67,7 @@ export async function runExportJob(
     }
 
     if (missingScenes.length > 0 && !allowPartial) {
-      markFailed(jobId, `缺少 ${missingScenes.length} 个镜头的视频片段: ${missingScenes.join("; ")}`);
+      markFailed(jobId, `缺少 ${missingScenes.length} 个镜头的视频片段`);
       return;
     }
 
@@ -131,7 +120,18 @@ export async function runExportJob(
       outputPath,
       filename,
       sceneCount: clipPaths.length,
-      missingScenes,
+      missingScenes: preflight.missingScenes,
+      usingFallbackClips: preflight.usingFallbackClips,
+      manifest: exportItems.map(function(item) {
+        return {
+          sceneId: item.sceneId,
+          order: item.order,
+          title: item.title,
+          clipId: item.clipId,
+          version: item.version,
+          duration: item.duration,
+        };
+      }),
     });
   } catch (fatalErr) {
     const msg = fatalErr instanceof Error ? fatalErr.message : "Unknown error";
