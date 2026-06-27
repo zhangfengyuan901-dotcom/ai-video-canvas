@@ -46,6 +46,32 @@ export async function videoRoutes(app: FastifyInstance) {
 
       const body = (request.body ?? {}) as { sceneIds?: string[] };
 
+      // 校验：只有故事板审核通过的 scene 才能生成视频
+      if (body.sceneIds && body.sceneIds.length > 0) {
+        for (const sid of body.sceneIds) {
+          const sc = db.select().from(scenes).where(eq(scenes.id, sid)).get();
+          if (!sc || sc.projectId !== request.params.projectId) {
+            return reply.status(404).send({ success: false, error: `Scene ${sid} not found` });
+          }
+          if (sc.storyboardReviewStatus !== "approved") {
+            return reply.status(400).send({
+              success: false,
+              error: `故事板未审核通过，不能生成视频（Scene: ${sc.title || sc.order}）`,
+            });
+          }
+        }
+      } else {
+        // 不传 sceneIds 时检查全部
+        const allProjectScenes = db.select().from(scenes).where(eq(scenes.projectId, request.params.projectId)).all();
+        const unapproved = allProjectScenes.filter((s) => s.storyboardReviewStatus !== "approved");
+        if (unapproved.length > 0) {
+          return reply.status(400).send({
+            success: false,
+            error: `有 ${unapproved.length} 个镜头故事板未审核通过，不能生成视频`,
+          });
+        }
+      }
+
       // Create background video task, return immediately jobId
       const job = createJob(request.params.projectId, "VIDEO_GENERATE", {
         sceneIds: body.sceneIds ?? undefined,

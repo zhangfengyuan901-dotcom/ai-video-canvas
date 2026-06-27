@@ -224,11 +224,16 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
           {canExport ? (
             <p className="text-[11px] text-green-400/80 flex-1">全部镜头视频已审核通过，将按当前版本导出完整视频。</p>
           ) : (
-            <p className="text-[11px] text-zinc-500 flex-1">
-              {missingCount > 0 && "还有 " + missingCount + " 个镜头没有可用视频。"}
-              {unapprovedCount > 0 && "有 " + unapprovedCount + " 个镜头视频未审核。"}
-              {canPartialExport && " 你也可以选择部分导出，只导出已完成的视频片段。"}
-            </p>
+            <div className="flex-1 space-y-1">
+              {!canExport && canPartialExport && (
+                <p className="text-[11px] text-amber-400 font-medium">⚠ 部分镜头不可用，导出视频将不完整</p>
+              )}
+              <p className="text-[11px] text-zinc-500">
+                {missingCount > 0 && "还有 " + missingCount + " 个镜头没有可用视频。"}
+                {unapprovedCount > 0 && "有 " + unapprovedCount + " 个镜头视频未审核。"}
+                {canPartialExport && " 你也可以选择部分导出，只导出已完成的视频片段。"}
+              </p>
+            </div>
           )}
 
           <button onClick={onClose} className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">取消</button>

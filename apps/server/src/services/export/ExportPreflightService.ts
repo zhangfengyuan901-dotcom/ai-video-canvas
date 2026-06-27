@@ -5,7 +5,7 @@
 import { existsSync } from "node:fs";
 import { eq } from "drizzle-orm";
 import { db } from "../../db/index.js";
-import { projects, scenes, videoClips } from "../../db/schema.js";
+import { scenes, videoClips } from "../../db/schema.js";
 
 export interface ExportPreflightItem {
   sceneId: string;
@@ -51,7 +51,6 @@ export interface ExportPreflightResult {
 }
 
 export function buildExportPreflight(projectId: string): ExportPreflightResult {
-  db.select().from(projects).where(eq(projects.id, projectId)).get();
   const sceneRows = db.select().from(scenes).where(eq(scenes.projectId, projectId)).orderBy(scenes.order).all();
   const allClips = db.select().from(videoClips).where(eq(videoClips.projectId, projectId)).all();
 
