@@ -149,6 +149,7 @@ export async function projectRoutes(app: FastifyInstance) {
     if (data.motionPrompt !== undefined) updates.motionPrompt = data.motionPrompt;
     if (data.dialogue !== undefined) updates.dialogue = data.dialogue;
     if (data.audioEffects !== undefined) updates.audioEffects = data.audioEffects;
+    if (data.duration !== undefined) updates.duration = data.duration;
     if (data.locked !== undefined) updates.locked = data.locked ? 1 : 0;
 
     db.update(scenes).set(updates).where(eq(scenes.id, request.params.id)).run();

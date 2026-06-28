@@ -44,22 +44,47 @@ export default function ShotEditor({ scene }: ShotEditorProps) {
   // Regenerate storyboard images for this scene
   async function handleRegenImage() {
     if (!currentProject || isGeneratingStoryboard) return;
+    useProjectStore.getState().setGeneratingStoryboard(true);
     try {
-      const { post } = api;
-      const data = await fetch(`/api/projects/${currentProject.id}/storyboard/generate`, {
+      const res = await fetch(`/api/projects/${currentProject.id}/storyboard/generate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ sceneIds: [scene.id] }),
-      }).then((r) => r.json());
-      if (!data.success) throw new Error(data.error ?? "Generation failed");
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error ?? "Generation failed");
+
+      // Poll job until complete
+      const jobId = json.data?.jobId;
+      if (jobId) {
+        const poll = setInterval(async () => {
+          try {
+            const job = await fetch(`/api/jobs/${jobId}`).then((r) => r.json());
+            if (job.data?.status === "success") {
+              clearInterval(poll);
+              useProjectStore.getState().setGeneratingStoryboard(false);
+              // Reload panels
+              if (currentProject) {
+                const panels = await fetch(`/api/projects/${currentProject.id}/scenes/${scene.id}/panels`).then((r) => r.json());
+                if (panels.success) useProjectStore.getState().setPanels(scene.id, panels.data);
+              }
+            } else if (job.data?.status === "failed" || job.data?.status === "cancelled") {
+              clearInterval(poll);
+              useProjectStore.getState().setGeneratingStoryboard(false);
+            }
+          } catch { clearInterval(poll); useProjectStore.getState().setGeneratingStoryboard(false); }
+        }, 2000);
+      }
     } catch (err) {
       console.error("Storyboard regen failed:", err);
+      useProjectStore.getState().setGeneratingStoryboard(false);
     }
   }
 
   // Regenerate video for this scene
   async function handleRegenVideo() {
     if (!currentProject || isGeneratingVideo) return;
+    useProjectStore.getState().setGeneratingVideo(true);
     try {
       const res = await fetch(`/api/projects/${currentProject.id}/videos/generate`, {
         method: "POST",
@@ -68,8 +93,26 @@ export default function ShotEditor({ scene }: ShotEditorProps) {
       });
       const json = await res.json();
       if (!json.success) throw new Error(json.error ?? "Generate failed");
+
+      // Poll job until complete
+      const jobId = json.data?.jobId;
+      if (jobId) {
+        const poll = setInterval(async () => {
+          try {
+            const job = await fetch(`/api/jobs/${jobId}`).then((r) => r.json());
+            if (job.data?.status === "success") {
+              clearInterval(poll);
+              useProjectStore.getState().setGeneratingVideo(false);
+            } else if (job.data?.status === "failed" || job.data?.status === "cancelled") {
+              clearInterval(poll);
+              useProjectStore.getState().setGeneratingVideo(false);
+            }
+          } catch { clearInterval(poll); useProjectStore.getState().setGeneratingVideo(false); }
+        }, 2000);
+      }
     } catch (err) {
       console.error("Video regen failed:", err);
+      useProjectStore.getState().setGeneratingVideo(false);
     }
   }
 

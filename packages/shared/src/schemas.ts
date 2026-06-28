@@ -28,6 +28,7 @@ export const updateSceneSchema = z.object({
   motionPrompt: z.string().optional(),
   dialogue: z.string().optional(),
   audioEffects: z.string().optional(),
+  duration: z.number().int().positive().optional(),
   locked: z.boolean().optional(),
 });
 

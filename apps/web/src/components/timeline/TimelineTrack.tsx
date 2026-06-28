@@ -140,7 +140,14 @@ export default function TimelineTrack({ label, type, zoom = 50 }: TimelineTrackP
       useProjectStore.getState().setGeneratingVideo(true);
       setVideoJobProgress(0);
       try {
-        const ids = sceneIds ?? useProjectStore.getState().scenes.map((s) => s.id);
+        const allScenes = useProjectStore.getState().scenes;
+        const ids = sceneIds ?? allScenes
+          .filter((s) => s.storyboardReviewStatus === "approved")
+          .map((s) => s.id);
+        if (ids.length === 0) {
+          useProjectStore.getState().setGeneratingVideo(false);
+          return;
+        }
         const data = await post<{ jobId: string }>(`/projects/${project.id}/videos/generate`, { sceneIds: ids });
         setVideoJobId(data.jobId);
       } catch (err) {

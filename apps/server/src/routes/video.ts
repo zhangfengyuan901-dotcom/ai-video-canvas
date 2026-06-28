@@ -341,6 +341,40 @@ export async function videoRoutes(app: FastifyInstance) {
       }
     },
   );
+
+  // ---- 9. Video Review (approve/reject) ------------------------------------
+  // PATCH /api/projects/:projectId/scenes/:sceneId/videos/:clipId/review
+
+  app.patch<{
+    Params: { projectId: string; sceneId: string; clipId: string };
+    Body: { status: "approved" | "rejected" | "pending"; note?: string; setCurrent?: boolean };
+  }>("/projects/:projectId/scenes/:sceneId/videos/:clipId/review", async (request, reply) => {
+    const { clipId, sceneId, projectId } = request.params;
+    const { status, note, setCurrent } = request.body ?? {};
+    if (!["approved", "rejected", "pending"].includes(status)) {
+      return reply.status(400).send({ success: false, error: "Invalid review status" });
+    }
+    const clip = db.select().from(videoClips).where(eq(videoClips.id, clipId)).get();
+    if (!clip || clip.sceneId !== sceneId || clip.projectId !== projectId) {
+      return reply.status(404).send({ success: false, error: "Clip not found" });
+    }
+    const now = new Date().toISOString();
+    const updates: Record<string, unknown> = {
+      reviewStatus: status, reviewNote: note ?? null, updatedAt: now,
+    };
+    if (status === "approved") {
+      updates.approvedAt = now;
+      if (setCurrent) {
+        db.update(scenes).set({ currentClipId: clipId, updatedAt: now })
+          .where(eq(scenes.id, sceneId)).run();
+      }
+    } else if (status === "rejected") {
+      updates.rejectedAt = now;
+    }
+    db.update(videoClips).set(updates).where(eq(videoClips.id, clipId)).run();
+    const updated = db.select().from(videoClips).where(eq(videoClips.id, clipId)).get();
+    return { success: true, data: annotateClip(updated) };
+  });
 }
 
 
