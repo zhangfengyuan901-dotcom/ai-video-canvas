@@ -11,6 +11,9 @@
     "dev": "concurrently \"npm run dev -w apps/server\" \"npm run dev -w apps/web\"",
     "dev:server": "npm run dev -w apps/server",
     "dev:web": "npm run dev -w apps/web",
+    "dev:h5": "concurrently -k -n server,web,open -c blue,green,yellow \"npm run dev -w apps/server\" \"npm run dev -w apps/web\" \"wait-on http://127.0.0.1:3001/api/health http://127.0.0.1:5173 && open-cli http://localhost:5173\"",
+    "build:server": "npm run build -w apps/server",
+    "build:web": "npm run build -w apps/web",
     "db:push": "npm run db:push -w apps/server",
     "verify:script": "npx tsx phase0/verify-1-gpt-script.ts",
     "verify:image": "npx tsx phase0/verify-2-image-gen.ts",
@@ -18,8 +21,11 @@
   },
   "devDependencies": {
     "concurrently": "^9.1.0",
+    "open-cli": "^9.0.0",
+    "playwright": "^1.61.1",
     "tsx": "^4.19.0",
-    "typescript": "^5.7.0"
+    "typescript": "^5.7.0",
+    "wait-on": "^9.0.10"
   },
   "dependencies": {
     "dotenv": "^16.4.0"
