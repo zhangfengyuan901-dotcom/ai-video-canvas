@@ -2,6 +2,7 @@
 // useApiSettings — API 设置状态 hook
 // =========================================================================
 
+import { useCallback } from "react";
 import { useApi } from "./useApi";
 
 export interface ApiSettingsStatus {
@@ -48,17 +49,17 @@ export interface ApiSettingsCheckResult {
 export function useApiSettings() {
   const { get, put, post } = useApi();
 
-  async function getApiSettings() {
+  const getApiSettings = useCallback(async () => {
     return await get<ApiSettingsStatus>("/settings/api");
-  }
+  }, [get]);
 
-  async function saveApiSettings(payload: UpdateApiSettingsInput) {
+  const saveApiSettings = useCallback(async (payload: UpdateApiSettingsInput) => {
     return await put<ApiSettingsStatus>("/settings/api", payload);
-  }
+  }, [put]);
 
-  async function checkApiSettings() {
+  const checkApiSettings = useCallback(async () => {
     return await post<ApiSettingsCheckResult>("/settings/api/check", {});
-  }
+  }, [post]);
 
   return { getApiSettings, saveApiSettings, checkApiSettings };
 }
