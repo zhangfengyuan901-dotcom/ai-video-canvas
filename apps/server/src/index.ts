@@ -25,11 +25,17 @@ const app = Fastify({ logger: true });
 
 await app.register(cors, {
   origin: (origin, cb) => {
-    // Allow localhost dev server, file:// (Origin: null), and no-origin requests
-    if (!origin || origin === "null" || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+    // Exact allowlist: Vite dev server + file:// (Origin: null) + same-origin (no Origin header)
+    const allowed = new Set([
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:3001",
+      "http://127.0.0.1:3001",
+    ]);
+    if (!origin || origin === "null" || allowed.has(origin)) {
       cb(null, true);
     } else {
-      cb(null, false); // Not allowed
+      cb(null, false);
     }
   },
   methods: ["GET", "POST", "PATCH", "DELETE"],
