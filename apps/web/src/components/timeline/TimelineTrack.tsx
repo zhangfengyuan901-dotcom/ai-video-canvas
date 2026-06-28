@@ -1,6 +1,6 @@
-﻿// =========================================================================
-// TimelineTrack — 单条时间线轨道（Storyboard / Video）
-// 支持拖拽排序 + 视频生成管理（Phase 4）
+// =========================================================================
+// TimelineTrack — 单条时间线轨道 (Storyboard / Video) (redesigned)
+// 支持拖拽排序 + 视频生成管理（Phase 4）+ zoom 缩放
 // =========================================================================
 
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -8,13 +8,15 @@ import { useProjectStore } from "../../stores/projectStore";
 import { useApi } from "../../hooks/useApi";
 import { useVideoClips } from "../../hooks/useVideoClips";
 import TimelineItem from "./TimelineItem";
+import { VideoIcon, Image } from "lucide-react";
 
 interface TimelineTrackProps {
   label: string;
   type: "storyboard" | "video";
+  zoom?: number;
 }
 
-export default function TimelineTrack({ label, type }: TimelineTrackProps) {
+export default function TimelineTrack({ label, type, zoom = 50 }: TimelineTrackProps) {
   const scenes = useProjectStore((s) => s.scenes);
   const panelsByScene = useProjectStore((s) => s.panelsByScene);
   const clipsByScene = useProjectStore((s) => s.clipsByScene);
@@ -31,6 +33,9 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   const [videoJobProgress, setVideoJobProgress] = useState<number>(0);
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Scale factor from zoom (0–100) → 0.5x – 1.5x
+  const scale = 0.5 + zoom / 100;
 
   // ---- Video: fetch clips (stable callback via getState) ----------------
 
@@ -138,20 +143,17 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   function getThumbnailUrl(sceneId: string): string | null {
     const projectId = useProjectStore.getState().currentProject?.id;
     if (!projectId) return null;
-    // 后端统一处理 strip / panel0 / 任意 ready panel fallback
     return `/api/projects/${projectId}/scenes/${sceneId}/preview`;
   }
 
   function getClip(sceneId: string) {
     const clips = clipsByScene[sceneId];
     if (!clips || clips.length === 0) return null;
-    // 如果用户选择了某个版本，优先显示
     const overrideId = selectedClipId[sceneId];
     if (overrideId) {
       const override = clips.find((c) => c.id === overrideId);
       if (override) return override;
     }
-    // 否则显示最新版本
     return clips.reduce((latest, c) => (c.version > latest.version ? c : latest), clips[0]);
   }
 
@@ -250,13 +252,15 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
 
   // ---- Render -----------------------------------------------------------
 
+  const typeIcon = type === "video" ? <VideoIcon className="h-3 w-3" /> : <Image className="h-3 w-3" />;
+
   if (scenes.length === 0) {
     return (
       <div className="flex-1 flex flex-col min-h-0">
-        <TrackHeader label={label} count={0} type={type} />
+        <TrackHeader label={label} count={0} type={type} typeIcon={typeIcon} />
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-xs text-zinc-600">
-            {currentProject ? "暂无镜头，请先在聊天框生成脚本" : "请先创建或打开一个项目"}
+          <p className="text-xs text-gray-500">
+            {currentProject ? "No shots yet — generate a script first" : "Create or open a project first"}
           </p>
         </div>
       </div>
@@ -269,6 +273,7 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
         label={label}
         count={scenes.length}
         type={type}
+        typeIcon={typeIcon}
         onGenerateAll={
           type === "video"
             ? () => handleGenerateVideo()
@@ -278,7 +283,10 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
         progress={videoJobProgress}
       />
       <div className="flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2">
-        <div className="flex gap-2 h-full items-start pt-2 min-w-min">
+        <div
+          className="flex gap-2 h-full items-start pt-2 min-w-min"
+          style={{ transform: `scaleX(${scale})`, transformOrigin: "left center" }}
+        >
           {scenes.map((scene) => (
             <TimelineItem
               key={scene.id}
@@ -318,6 +326,7 @@ function TrackHeader({
   label,
   count,
   type,
+  typeIcon,
   onGenerateAll,
   isGenerating,
   progress,
@@ -325,19 +334,19 @@ function TrackHeader({
   label: string;
   count: number;
   type: "storyboard" | "video";
+  typeIcon: React.ReactNode;
   onGenerateAll?: () => void;
   isGenerating?: boolean;
   progress?: number;
 }) {
-  const labelCN = type === "video" ? "text-blue-400" : "text-zinc-500";
-
   return (
     <div className="h-7 flex items-center px-3 gap-2 shrink-0">
-      <span className={`text-[11px] font-medium uppercase tracking-wider ${labelCN}`}>
+      <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-gray-400">
+        {typeIcon}
         {label}
       </span>
-      <span className="text-[10px] text-zinc-600">
-        {count > 0 ? `${count} 个${label === "Storyboard" ? "镜头" : "片段"}` : ""}
+      <span className="text-[10px] text-gray-500">
+        {count > 0 ? `${count} clips` : ""}
       </span>
       <div className="flex-1" />
 
@@ -345,13 +354,13 @@ function TrackHeader({
         <button
           onClick={onGenerateAll}
           disabled={isGenerating || count === 0}
-          className={`text-[10px] px-2 py-0.5 rounded font-medium transition-colors ${
+          className={`text-[10px] px-2 py-0.5 rounded font-medium transition-all ${
             isGenerating
               ? "bg-blue-600/20 text-blue-400 animate-pulse cursor-not-allowed"
-              : "bg-blue-600 hover:bg-blue-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500"
+              : "bg-blue-600/80 hover:bg-blue-600 text-white disabled:opacity-40 disabled:pointer-events-none"
           }`}
         >
-          {isGenerating ? `生成中... ${progress ?? 0}%` : "生成全部视频"}
+          {isGenerating ? `Generating... ${progress ?? 0}%` : "Generate All Video"}
         </button>
       )}
     </div>

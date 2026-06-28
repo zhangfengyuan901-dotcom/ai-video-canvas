@@ -1,4 +1,4 @@
-// =========================================================================
+﻿// =========================================================================
 // Database connection — SQLite via Drizzle
 // =========================================================================
 
@@ -65,6 +65,50 @@ try {
   sqlite.exec(`ALTER TABLE scenes ADD COLUMN current_clip_id TEXT`);
 } catch {
   // 列已存在，忽略
+}
+
+try {
+  // 添加 scenes 的 storyboard 审核字段
+  sqlite.exec(`ALTER TABLE scenes ADD COLUMN storyboard_review_status TEXT NOT NULL DEFAULT 'pending'`);
+} catch {
+}
+
+try {
+  sqlite.exec(`ALTER TABLE scenes ADD COLUMN storyboard_review_note TEXT`);
+} catch {
+}
+
+try {
+  sqlite.exec(`ALTER TABLE scenes ADD COLUMN storyboard_approved_at TEXT`);
+} catch {
+}
+
+try {
+  // 添加 video_clips 的审核字段
+  sqlite.exec(`ALTER TABLE video_clips ADD COLUMN review_status TEXT NOT NULL DEFAULT 'pending'`);
+} catch {
+}
+
+try {
+  sqlite.exec(`ALTER TABLE video_clips ADD COLUMN review_note TEXT`);
+} catch {
+}
+
+try {
+  sqlite.exec(`ALTER TABLE video_clips ADD COLUMN approved_at TEXT`);
+} catch {
+}
+
+try {
+  sqlite.exec(`ALTER TABLE video_clips ADD COLUMN rejected_at TEXT`);
+} catch {
+}
+
+
+try {
+  sqlite.exec("CREATE TABLE IF NOT EXISTS reference_assets (id TEXT PRIMARY KEY, project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE, type TEXT NOT NULL, label TEXT, description TEXT, local_path TEXT NOT NULL, mime_type TEXT NOT NULL, original_filename TEXT, width INTEGER, height INTEGER, file_size INTEGER, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)");
+} catch (e) {
+  console.warn("[DB] reference_assets table creation warning:", e);
 }
 
 // ---- storyboard_panels 唯一约束 + 清理重复数据 -------------------------

@@ -2,16 +2,23 @@
 
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #1f2937;
 }
 ::-webkit-scrollbar-thumb {
-  background: #52525b;
-  border-radius: 3px;
+  background: #4b5563;
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #71717a;
+  background: #6b7280;
+}
+
+/* Canvas dot-grid background (matches UI mockup) */
+.canvas-bg {
+  background-color: #111827;
+  background-image: radial-gradient(#374151 1px, transparent 1px);
+  background-size: 20px 20px;
 }

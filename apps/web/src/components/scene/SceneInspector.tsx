@@ -63,20 +63,20 @@ export default function SceneInspector({ scene }: Props) {
         const value = (scene[key] ?? "") as string;
         return (
           <div key={key}>
-            <label className="block text-zinc-500 mb-0.5">{label}</label>
+            <label className="block text-gray-500 mb-0.5">{label}</label>
             {type === "textarea" ? (
               <textarea
                 value={value}
                 onChange={(e) => handleChange(key, e.target.value)}
                 rows={2}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-blue-600 resize-none"
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-600 resize-none"
               />
             ) : (
               <input
                 type="text"
                 value={value}
                 onChange={(e) => handleChange(key, e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-200 placeholder-zinc-600 focus:outline-none focus:border-blue-600"
+                className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-200 placeholder-gray-600 focus:outline-none focus:border-blue-600"
               />
             )}
           </div>

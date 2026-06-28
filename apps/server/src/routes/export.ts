@@ -10,6 +10,7 @@ import { db } from "../db/index.js";
 import { projects } from "../db/schema.js";
 import { createJob } from "../services/jobs/JobService.js";
 import { startExportWorker } from "../services/jobs/ExportWorker.js";
+import { buildExportPreflight } from "../services/export/ExportPreflightService.js";
 
 const DATA_ROOT = resolve(import.meta.dirname, "../../../../local-data");
 
@@ -34,6 +35,20 @@ export async function exportRoutes(app: FastifyInstance) {
     },
   );
 
+  // GET /api/projects/:projectId/export/preflight — 导出预检
+
+  app.get<{ Params: { projectId: string } }>(
+    "/projects/:projectId/export/preflight",
+    async (request, reply) => {
+      const project = db.select().from(projects).where(eq(projects.id, request.params.projectId)).get();
+      if (!project) {
+        return reply.status(404).send({ success: false, error: "Project not found" });
+      }
+
+      const preflight = buildExportPreflight(request.params.projectId);
+      return { success: true, data: preflight };
+    },
+  );
   // GET /api/projects/:projectId/exports/:filename — 下载导出文件（防路径穿越）
 
   app.get<{ Params: { projectId: string; filename: string } }>(

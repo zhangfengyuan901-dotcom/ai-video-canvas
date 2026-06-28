@@ -2,9 +2,17 @@
 // useApiSettings — API 设置状态 hook
 // =========================================================================
 
+import { useCallback } from "react";
 import { useApi } from "./useApi";
 
 export interface ApiSettingsStatus {
+  chat: {
+    configured: boolean;
+    source: "stored" | "env" | "missing";
+    maskedKey: string | null;
+    baseUrl: string;
+    model: string;
+  };
   packy: {
     configured: boolean;
     source: "stored" | "env" | "missing";
@@ -23,6 +31,13 @@ export interface ApiSettingsStatus {
 }
 
 export interface UpdateApiSettingsInput {
+  chat?: {
+    enabled?: boolean;
+    baseUrl?: string;
+    model?: string;
+    apiKey?: string;
+    clearApiKey?: boolean;
+  };
   packy?: {
     enabled?: boolean;
     baseUrl?: string;
@@ -41,6 +56,7 @@ export interface UpdateApiSettingsInput {
 }
 
 export interface ApiSettingsCheckResult {
+  chat: { configured: boolean; message: string };
   packy: { configured: boolean; message: string };
   runninghub: { configured: boolean; message: string };
 }
@@ -48,17 +64,17 @@ export interface ApiSettingsCheckResult {
 export function useApiSettings() {
   const { get, put, post } = useApi();
 
-  async function getApiSettings() {
+  const getApiSettings = useCallback(async () => {
     return await get<ApiSettingsStatus>("/settings/api");
-  }
+  }, [get]);
 
-  async function saveApiSettings(payload: UpdateApiSettingsInput) {
+  const saveApiSettings = useCallback(async (payload: UpdateApiSettingsInput) => {
     return await put<ApiSettingsStatus>("/settings/api", payload);
-  }
+  }, [put]);
 
-  async function checkApiSettings() {
+  const checkApiSettings = useCallback(async () => {
     return await post<ApiSettingsCheckResult>("/settings/api/check", {});
-  }
+  }, [post]);
 
   return { getApiSettings, saveApiSettings, checkApiSettings };
 }

@@ -69,22 +69,22 @@ export default function ClipDiagnosticsDrawer({
         aria-label="Closediagnostics drawer overlay"
       />
       <aside
-        className="relative z-10 h-full w-[420px] max-w-[92vw] overflow-y-auto border-l border-zinc-800 bg-zinc-950 shadow-2xl"
+        className="relative z-10 h-full w-[420px] max-w-[92vw] overflow-y-auto border-l border-gray-700 bg-gray-900 shadow-2xl"
         onClick={function (e) { e.stopPropagation(); }}
       >
         {/* Header */}
-        <div className="sticky top-0 z-20 border-b border-zinc-800 bg-zinc-950 p-3">
+        <div className="sticky top-0 z-20 border-b border-gray-700 bg-gray-900 p-3">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-sm font-medium text-zinc-200">RunningHub Diagnostics</h2>
-              <p className="text-[10px] text-zinc-500 mt-0.5">
+              <h2 className="text-sm font-medium text-gray-200">RunningHub Diagnostics</h2>
+              <p className="text-[10px] text-gray-500 mt-0.5">
                 Clip v{clip.version} | {clip.status}
               </p>
             </div>
             <button
               type="button"
               onClick={function (e) { e.stopPropagation(); onClose(); }}
-              className="text-[11px] text-zinc-500 hover:text-zinc-300 px-2 py-1 rounded border border-zinc-700 hover:border-zinc-500"
+              className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-1 rounded border border-gray-600 hover:border-gray-500"
             >
               Close
             </button>
@@ -93,7 +93,7 @@ export default function ClipDiagnosticsDrawer({
             type="button"
             onClick={function (e) { e.stopPropagation(); void reload(); }}
             disabled={loading}
-            className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 disabled:text-zinc-600"
+            className="mt-2 text-[10px] text-blue-400 hover:text-blue-300 disabled:text-gray-500"
           >
             {loading ? "Refreshing..." : "Refresh"}
           </button>
@@ -106,11 +106,11 @@ export default function ClipDiagnosticsDrawer({
               <span className={"text-[10px] px-1.5 py-0.5 rounded " + severityBadge(guidance.severity)}>
                 {guidance.code}
               </span>
-              <span className="text-[11px] font-medium text-zinc-300">{guidance.title}</span>
+              <span className="text-[11px] font-medium text-gray-300">{guidance.title}</span>
             </div>
-            <p className="text-[10px] text-zinc-400">{guidance.message}</p>
+            <p className="text-[10px] text-gray-400">{guidance.message}</p>
             {guidance.actions.length > 0 && (
-              <ul className="mt-1 list-disc list-inside text-[10px] text-zinc-500 space-y-0.5">
+              <ul className="mt-1 list-disc list-inside text-[10px] text-gray-500 space-y-0.5">
                 {guidance.actions.map(function (a, i) { return <li key={i}>{a}</li>; })}
               </ul>
             )}
@@ -119,7 +119,7 @@ export default function ClipDiagnosticsDrawer({
                 type="button"
                 onClick={function (e) { e.stopPropagation(); onRegenerate(); }}
                 disabled={isRegenerating}
-                className="mt-2 text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:bg-zinc-700 disabled:text-zinc-500"
+                className="mt-2 text-[10px] bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded disabled:bg-gray-600 disabled:text-gray-500"
               >
                 {isRegenerating ? "Submitting retry..." : "Create retry"}
               </button>
@@ -127,9 +127,9 @@ export default function ClipDiagnosticsDrawer({
           </div>
 
           {/* Loading / Error */}
-          {loading && <div className="text-[10px] text-zinc-600">Loading full diagnostics...</div>}
+          {loading && <div className="text-[10px] text-gray-500">Loading full diagnostics...</div>}
           {detailError && <div className="text-[10px] text-yellow-500">Diagnostics load failed: {detailError} (showing summary)</div>}
-          {!loaded && !loading && !detailError && <div className="text-[10px] text-zinc-600">Click "Load details" for full diagnostics</div>}
+          {!loaded && !loading && !detailError && <div className="text-[10px] text-gray-500">Click "Load details" for full diagnostics</div>}
 
           {/* Summary Cards */}
           <Section title="Overview">
@@ -175,11 +175,11 @@ export default function ClipDiagnosticsDrawer({
 
               {clip.retryChildren && clip.retryChildren.length > 0 && (
                 <div className="grid grid-cols-[120px_1fr] gap-2 text-[10px]">
-                  <span className="text-zinc-600">Retry Children</span>
+                  <span className="text-gray-500">Retry Children</span>
                   <div className="space-y-1">
                     {clip.retryChildren.map(function (child) {
                       return (
-                        <div key={child.id} className="font-mono text-zinc-400 break-all">
+                        <div key={child.id} className="font-mono text-gray-400 break-all">
                           v{child.version} | {child.status} | {child.id}
                         </div>
                       );
@@ -205,7 +205,7 @@ export default function ClipDiagnosticsDrawer({
             <Section title={"Results (" + d!.results!.length + ")"}>
               {(d!.results!).map(function (r, i) {
                 return (
-                  <div key={i} className="rounded bg-zinc-900/60 p-1.5 text-[10px] space-y-0.5">
+                  <div key={i} className="rounded bg-gray-800/60 p-1.5 text-[10px] space-y-0.5">
                     <DiagRow label={"#" + (i + 1) + " nodeId"} value={r.nodeId} mono />
                     <DiagRow label={"outputType"} value={r.outputType} />
                     <DiagRow label={"url"} value={redactUrl(r.url)} mono />
@@ -219,8 +219,8 @@ export default function ClipDiagnosticsDrawer({
           {/* failedReason */}
           {failedReasonFormatted.pretty && (
             <Section title="failedReason">
-              <p className="text-[10px] text-zinc-500 mb-1">{failedReasonFormatted.summary}</p>
-              <pre className="max-h-64 overflow-auto rounded bg-zinc-900 p-2 font-mono text-[10px] text-zinc-400 break-all whitespace-pre-wrap">
+              <p className="text-[10px] text-gray-500 mb-1">{failedReasonFormatted.summary}</p>
+              <pre className="max-h-64 overflow-auto rounded bg-gray-800 p-2 font-mono text-[10px] text-gray-400 break-all whitespace-pre-wrap">
                 {failedReasonFormatted.pretty}
               </pre>
             </Section>
@@ -229,7 +229,7 @@ export default function ClipDiagnosticsDrawer({
           {/* promptTips */}
           {promptTipsFormatted.pretty && (
             <Section title="promptTips">
-              <pre className="max-h-64 overflow-auto rounded bg-zinc-900 p-2 font-mono text-[10px] text-zinc-400 break-all whitespace-pre-wrap">
+              <pre className="max-h-64 overflow-auto rounded bg-gray-800 p-2 font-mono text-[10px] text-gray-400 break-all whitespace-pre-wrap">
                 {promptTipsFormatted.pretty}
               </pre>
             </Section>
@@ -246,7 +246,7 @@ export default function ClipDiagnosticsDrawer({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <h3 className="text-[11px] font-medium text-zinc-400 mb-1">{title}</h3>
+      <h3 className="text-[11px] font-medium text-gray-400 mb-1">{title}</h3>
       {children}
     </div>
   );
@@ -256,8 +256,8 @@ function DiagRow({ label, value, mono }: { label: string; value?: string | null;
   if (!value) return null;
   return (
     <div className="grid grid-cols-[120px_1fr] gap-2 text-[10px]">
-      <span className="text-zinc-600">{label}</span>
-      <span className={mono ? "font-mono text-zinc-400 break-all" : "text-zinc-400 break-words"}>{value}</span>
+      <span className="text-gray-500">{label}</span>
+      <span className={mono ? "font-mono text-gray-400 break-all" : "text-gray-400 break-words"}>{value}</span>
     </div>
   );
 }

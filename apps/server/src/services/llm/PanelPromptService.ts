@@ -1,13 +1,14 @@
-// =========================================================================
+﻿// =========================================================================
 // PanelPromptService — 调用 GPT 为镜头生成 3 个 panel prompt
 // 每个镜头拆成 start / middle / end 三张关键帧提示词
 // =========================================================================
 
 import { gptPanelOutputSchema, type StyleBible, type Scene } from "@ai-video-canvas/shared";
+import { getEffectiveApiConfig } from "../settings/ApiConfigService.js";
 
-const BASE_URL = process.env.PACKY_BASE_URL ?? "https://www.packyapi.com/v1";
-const API_KEY = process.env.PACKY_CHAT_API_KEY ?? "";
-const MODEL = process.env.PACKY_CHAT_MODEL ?? "gpt-5.2";
+function getChatConfig() {
+  return getEffectiveApiConfig().chat;
+}
 
 // ---- Prompt 模板 -------------------------------------------------------
 
@@ -39,9 +40,12 @@ JSON Schema:
 export async function generatePanelPrompts(
   scene: Scene,
   styleBible: Omit<StyleBible, "id" | "projectId">,
+  refAssets?: Array<{ type: string; label?: string | null; description?: string | null }>,
 ): Promise<{ panelIndex: number; role: "start" | "middle" | "end"; prompt: string }[]> {
-  if (!API_KEY || API_KEY === "your_chat_group_key") {
-    throw new Error("PACKY_CHAT_API_KEY is not configured in .env");
+  const chatConfig = getChatConfig();
+
+  if (!chatConfig.apiKey) {
+    throw new Error("Chat LLM API key is not configured. Set it in Settings → API Configuration.");
   }
 
   const styleText = [
@@ -66,16 +70,32 @@ export async function generatePanelPrompts(
     `动态: ${scene.motionPrompt}`,
   ].join("\n");
 
-  const userPrompt = `项目风格：\n${styleText}\n\n镜头信息：\n${sceneText}`;
+    // Build reference context
+  let refText = "";
+  if (refAssets && refAssets.length > 0) {
+    const refLines = refAssets
+      .filter((a) => a.description || a.label)
+      .map((a) => {
+        const typeLabel: Record<string, string> = {
+          character: "人物", scene: "场景", product: "产品", first_frame: "首帧", style: "风格", other: "参考",
+        };
+        return `${typeLabel[a.type] ?? "参考"}：${a.label ?? "无标签"}\n  描述：${a.description ?? "用户已上传该类型参考图"}`;
+      });
+    if (refLines.length > 0) {
+      refText = `\n\n参考素材：\n${refLines.join("\n")}\n\n要求：\n1. 人物参考：用于保持角色外貌一致\n2. 场景参考：用于保持环境一致\n3. 产品参考：用于保持产品颜色、形状、包装一致\n4. 首帧参考：第一个 scene 的 start panel 要尽量贴合首帧`;
+    }
+  }
 
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
+  const userPrompt = `项目风格：\n${styleText}\n\n镜头信息：\n${sceneText}${refText}`;
+
+  const response = await fetch(`${chatConfig.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${chatConfig.apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: chatConfig.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },

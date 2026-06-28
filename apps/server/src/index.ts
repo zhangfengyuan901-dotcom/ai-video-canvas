@@ -13,6 +13,8 @@ import { videoRoutes } from "./routes/video.js";
 import { jobRoutes } from "./routes/jobs.js";
 import { exportRoutes } from "./routes/export.js";
 import { settingsRoutes } from "./routes/settings.js";
+import { referenceAssetRoutes } from "./routes/referenceAssets.js";
+import { rhCliRoutes } from "./routes/rhcli.js";
 import { startBackgroundPoller } from "./services/VideoService.js";
 
 const PORT = parseInt(process.env.SERVER_PORT ?? "3001", 10);
@@ -23,7 +25,20 @@ const app = Fastify({ logger: true });
 // ---- Plugins -----------------------------------------------------------
 
 await app.register(cors, {
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: (origin, cb) => {
+    // Exact allowlist: Vite dev server + file:// (Origin: null) + same-origin (no Origin header)
+    const allowed = new Set([
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+      "http://localhost:3001",
+      "http://127.0.0.1:3001",
+    ]);
+    if (!origin || origin === "null" || allowed.has(origin)) {
+      cb(null, true);
+    } else {
+      cb(null, false);
+    }
+  },
   methods: ["GET", "POST", "PATCH", "DELETE"],
 });
 
@@ -43,6 +58,8 @@ await app.register(videoRoutes, { prefix: "/api" });
 await app.register(jobRoutes, { prefix: "/api" });
 await app.register(exportRoutes, { prefix: "/api" });
 await app.register(settingsRoutes, { prefix: "/api" });
+await app.register(referenceAssetRoutes, { prefix: "/api" });
+await app.register(rhCliRoutes, { prefix: "/api" });
 
 // ---- Health check ------------------------------------------------------
 

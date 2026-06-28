@@ -9,6 +9,12 @@ import { resolve } from "node:path";
 // ---- 类型 ---------------------------------------------------------------
 
 export interface StoredApiConfig {
+  chat?: {
+    enabled?: boolean;
+    baseUrl?: string;
+    apiKey?: string;
+    model?: string;
+  };
   packy?: {
     enabled?: boolean;
     baseUrl?: string;
@@ -25,6 +31,13 @@ export interface StoredApiConfig {
 }
 
 export interface ApiConfigPatch {
+  chat?: {
+    enabled?: boolean;
+    baseUrl?: string;
+    model?: string;
+    apiKey?: string;
+    clearApiKey?: boolean;
+  };
   packy?: {
     enabled?: boolean;
     baseUrl?: string;
@@ -43,6 +56,13 @@ export interface ApiConfigPatch {
 }
 
 export interface ApiConfigStatus {
+  chat: {
+    configured: boolean;
+    source: "stored" | "env" | "missing";
+    maskedKey: string | null;
+    baseUrl: string;
+    model: string;
+  };
   packy: {
     configured: boolean;
     source: "stored" | "env" | "missing";
@@ -62,6 +82,8 @@ export interface ApiConfigStatus {
 
 // ---- 默认值 -------------------------------------------------------------
 
+const DEFAULT_CHAT_BASE_URL = "https://www.packyapi.com/v1";
+const DEFAULT_CHAT_MODEL = "gpt-5.4";
 const DEFAULT_PACKY_BASE_URL = "https://www.packyapi.com/v1";
 const DEFAULT_PACKY_IMAGE_MODEL = "gpt-image-2";
 const DEFAULT_RUNNINGHUB_AI_APP_ID = "2037453629342355457";
@@ -108,15 +130,23 @@ function maskSecret(value: string | undefined): string | null {
 // ---- 运行时有效配置（合并 stored + env + 默认值）-------------------------
 
 export function getEffectiveApiConfig(): {
+  chat: { enabled: boolean; baseUrl: string; apiKey: string; model: string };
   packy: { enabled: boolean; baseUrl: string; apiKey: string; imageModel: string };
   runninghub: { enabled: boolean; apiKey: string; submitUrl: string; queryUrl: string; uploadUrl: string };
 } {
   const stored = readStoredConfig();
 
+  const chatApiKey = stored.chat?.apiKey || process.env.PACKY_CHAT_API_KEY || "";
   const packyApiKey = stored.packy?.apiKey || process.env.PACKY_SORA_API_KEY || "";
   const rhApiKey = stored.runninghub?.apiKey || process.env.RUNNINGHUB_API_KEY || "";
 
   return {
+    chat: {
+      enabled: stored.chat?.enabled ?? true,
+      baseUrl: stored.chat?.baseUrl || process.env.PACKY_BASE_URL || DEFAULT_CHAT_BASE_URL,
+      apiKey: chatApiKey,
+      model: stored.chat?.model || process.env.PACKY_CHAT_MODEL || DEFAULT_CHAT_MODEL,
+    },
     packy: {
       enabled: stored.packy?.enabled ?? true,
       baseUrl: stored.packy?.baseUrl || process.env.PACKY_BASE_URL || DEFAULT_PACKY_BASE_URL,
@@ -146,15 +176,30 @@ export function getEffectiveApiConfig(): {
 
 export function getSafeApiConfig(): ApiConfigStatus {
   const stored = readStoredConfig();
+
+  // Chat
+  const chatStoredKey = stored.chat?.apiKey;
+  const chatEnvKey = process.env.PACKY_CHAT_API_KEY || undefined;
+  const chatKey = chatStoredKey || chatEnvKey;
+
+  // Packy
   const storedKey = stored.packy?.apiKey;
   const envKey = process.env.PACKY_SORA_API_KEY || undefined;
   const packyKey = storedKey || envKey;
 
+  // RunningHub
   const rhStoredKey = stored.runninghub?.apiKey;
   const rhEnvKey = process.env.RUNNINGHUB_API_KEY || undefined;
   const rhKey = rhStoredKey || rhEnvKey;
 
   return {
+    chat: {
+      configured: !!chatKey,
+      source: chatStoredKey ? "stored" : chatEnvKey ? "env" : "missing",
+      maskedKey: maskSecret(chatKey),
+      baseUrl: stored.chat?.baseUrl || process.env.PACKY_BASE_URL || DEFAULT_CHAT_BASE_URL,
+      model: stored.chat?.model || process.env.PACKY_CHAT_MODEL || DEFAULT_CHAT_MODEL,
+    },
     packy: {
       configured: !!packyKey,
       source: storedKey ? "stored" : envKey ? "env" : "missing",
@@ -187,6 +232,16 @@ export function getSafeApiConfig(): ApiConfigStatus {
 export function saveApiConfigPatch(patch: ApiConfigPatch): ApiConfigStatus {
   const current = readStoredConfig();
 
+  // Chat
+  const chat = { ...(current.chat || {}) };
+  if (patch.chat) {
+    if (patch.chat.enabled !== undefined) chat.enabled = patch.chat.enabled;
+    if (patch.chat.baseUrl !== undefined) chat.baseUrl = patch.chat.baseUrl.trim();
+    if (patch.chat.model !== undefined) chat.model = patch.chat.model;
+    if (patch.chat.apiKey) chat.apiKey = patch.chat.apiKey;
+    if (patch.chat.clearApiKey) delete chat.apiKey;
+  }
+
   // Packy
   const packy = { ...(current.packy || {}) };
   if (patch.packy) {
@@ -208,7 +263,7 @@ export function saveApiConfigPatch(patch: ApiConfigPatch): ApiConfigStatus {
     if (patch.runninghub.uploadUrl !== undefined) runninghub.uploadUrl = patch.runninghub.uploadUrl.trim();
   }
 
-  const updated: StoredApiConfig = { packy, runninghub };
+  const updated: StoredApiConfig = { chat, packy, runninghub };
   saveStoredConfig(updated);
 
   return getSafeApiConfig();
@@ -217,16 +272,24 @@ export function saveApiConfigPatch(patch: ApiConfigPatch): ApiConfigStatus {
 // ---- 配置自检（轻量，不调用真实接口）--------------------------------------
 
 export function checkApiConfig(): {
+  chat: { configured: boolean; message: string };
   packy: { configured: boolean; message: string };
   runninghub: { configured: boolean; message: string };
 } {
   const effective = getEffectiveApiConfig();
 
+  const chatOk = !!effective.chat.apiKey && !!effective.chat.baseUrl && !!effective.chat.model;
   const packyOk = !!effective.packy.apiKey && !!effective.packy.baseUrl && !!effective.packy.imageModel;
   const rhOk = !!effective.runninghub.apiKey && !!effective.runninghub.submitUrl
     && !!effective.runninghub.queryUrl && !!effective.runninghub.uploadUrl;
 
   return {
+    chat: {
+      configured: chatOk,
+      message: chatOk
+        ? "Chat LLM API 配置正常"
+        : "Chat API Key 或 URL 未配置",
+    },
     packy: {
       configured: packyOk,
       message: packyOk

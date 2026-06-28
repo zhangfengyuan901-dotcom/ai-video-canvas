@@ -427,6 +427,82 @@ export async function storyboardRoutes(app: FastifyInstance) {
       });
     },
   );
+  // ---- 9. Storyboard review approval/rejection --------------------------
+  // PATCH /api/projects/:projectId/scenes/:sceneId/storyboard-review
+
+  app.patch<{ Params: { projectId: string; sceneId: string } }>(
+    "/projects/:projectId/scenes/:sceneId/storyboard-review",
+    async (request, reply) => {
+      const body = request.body as { status: string; note?: string };
+      const { projectId, sceneId } = request.params;
+      const { status, note } = body;
+
+      if (!["pending", "approved", "rejected"].includes(status)) {
+        return reply.status(400).send({ success: false, error: "status must be pending, approved, or rejected" });
+      }
+
+      // 校验 scene 归属
+      const scene = db.select().from(scenes).where(eq(scenes.id, sceneId)).get();
+      if (!scene || scene.projectId !== projectId) {
+        return reply.status(404).send({ success: false, error: "Scene not found for this project" });
+      }
+
+      // 审核通过时，必须校验三张 storyboard panel 都 ready
+      if (status === "approved") {
+        const panels = db
+          .select()
+          .from(storyboardPanels)
+          .where(eq(storyboardPanels.sceneId, sceneId))
+          .all();
+        const readyPanels = panels.filter((p) => p.status === "ready" && p.localPath && existsSync(p.localPath));
+        const readyIndexes = new Set(readyPanels.map((p) => p.panelIndex));
+        if (!readyIndexes.has(0) || !readyIndexes.has(1) || !readyIndexes.has(2)) {
+          return reply.status(400).send({
+            success: false,
+            error: "故事板未完整生成，不能审核通过",
+          });
+        }
+      }
+
+      const now = new Date().toISOString();
+
+      if (status === "approved") {
+        db.update(scenes)
+          .set({
+            storyboardReviewStatus: "approved",
+            storyboardApprovedAt: now,
+            storyboardReviewNote: note ?? null,
+            updatedAt: now,
+          })
+          .where(eq(scenes.id, sceneId))
+          .run();
+      } else if (status === "rejected") {
+        db.update(scenes)
+          .set({
+            storyboardReviewStatus: "rejected",
+            storyboardApprovedAt: null,
+            storyboardReviewNote: note ?? null,
+            updatedAt: now,
+          })
+          .where(eq(scenes.id, sceneId))
+          .run();
+      } else {
+        // pending
+        db.update(scenes)
+          .set({
+            storyboardReviewStatus: "pending",
+            storyboardApprovedAt: null,
+            storyboardReviewNote: note ?? null,
+            updatedAt: now,
+          })
+          .where(eq(scenes.id, sceneId))
+          .run();
+      }
+
+      const updated = db.select().from(scenes).where(eq(scenes.id, sceneId)).get();
+      return { success: true, data: updated };
+    },
+  );
   // ---- 8. Serve storyboard strip image ----------------------------------
   // GET /api/projects/:projectId/scenes/:sceneId/strip
 

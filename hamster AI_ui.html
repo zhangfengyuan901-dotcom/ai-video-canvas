@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta content="default-src 'none'; style-src 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; img-src * data: blob: http://localhost:3001; font-src https://cdnjs.cloudflare.com data:; media-src * data: blob: http://localhost:3001; connect-src http://localhost:3001; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'" http-equiv="Content-Security-Policy"/>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>AI Video Canvas - Local Workspace</title>
+<!-- Tailwind CSS Play CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Font Awesome -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js" integrity="sha384-GLz+4C4Q/zJF5GjG4n3FFR5GEXXoazd7fuN2aJEwU0p/r4DZf7R8Sv1q3RVZZ6k" crossorigin="anonymous"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" integrity="sha384-D76A+5Px3cTj9G1B5c0a0JN4JFK2Y36J/ub4mW4vU7N4WfzYPjeDtiMpNUI+XYP" crossorigin="anonymous"/>
+<style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track { background: #1f2937; }
+    ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+    /* Timeline Drag Styles */
+    .draggable-source { opacity: 0.4; border: 2px dashed #3b82f6; }
+    .drop-target { border: 2px dashed #10b981; }
+
+    /* Toast Animation */
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+    .toast { animation: slideIn 0.3s ease-out forwards; }
+    .toast.hiding { animation: fadeOut 0.3s ease-in forwards; }
+
+    /* Grid Background for Canvas */
+    .canvas-bg {
+        background-color: #111827;
+        background-image: radial-gradient(#374151 1px, transparent 1px);
+        background-size: 20px 20px;
+    }
+</style>
+</head>
+<body class="bg-gray-900 text-gray-100 font-sans h-screen flex flex-col overflow-hidden">
+
+<!-- Top Toolbar -->
+<header class="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0 z-20 shadow-md">
+    <div class="flex items-center gap-3">
+        <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
+            <i class="fa-solid fa-clapperboard text-white text-sm"></i>
+        </div>
+        <h1 class="font-bold text-lg tracking-wide">AI Video Canvas</h1>
+        <span class="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded">v1.0.0 Local</span>
+        <div class="h-5 w-px bg-gray-700 mx-1"></div>
+        <!-- Project selector (injected by JS) -->
+        <div id="projectSelectorArea" class="flex items-center gap-2"></div>
+    </div>
+    <div class="flex items-center gap-4">
+        <!-- API Status -->
+        <div class="flex items-center gap-2 px-3 py-1 bg-gray-700 rounded-full text-xs cursor-pointer hover:bg-gray-600 transition" id="apiStatusBtn">
+            <div class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" id="apiStatusDot"></div>
+            <span class="text-yellow-400" id="apiStatusText">Checking...</span>
+        </div>
+        <!-- Export Button -->
+        <button class="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-sm font-medium transition shadow-lg shadow-blue-900/50 disabled:opacity-50 disabled:pointer-events-none" onclick="handleExport()" id="exportBtn" disabled>
+            <i class="fa-solid fa-file-export"></i>
+            Export Video
+        </button>
+    </div>
+</header>
+
+<!-- Main Workspace -->
+<div class="flex-1 flex overflow-hidden">
+    <!-- Left Chat Panel -->
+    <aside class="w-80 bg-gray-800 border-r border-gray-700 flex flex-col shrink-0 z-10">
+        <div class="p-3 border-b border-gray-700 font-semibold text-sm text-gray-300 flex justify-between items-center">
+            <span><i class="fa-regular fa-comments mr-2"></i>Script Assistant</span>
+            <button class="text-gray-500 hover:text-white" title="Clear Chat" onclick="clearChatMessages()"><i class="fa-solid fa-trash-can"></i></button>
+        </div>
+        <!-- Chat Messages Area -->
+        <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chatContainer">
+            <div class="flex gap-3">
+                <div class="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center shrink-0 border border-blue-700">
+                    <i class="fa-solid fa-robot text-blue-400 text-xs"></i>
+                </div>
+                <div class="bg-gray-700 p-3 rounded-lg rounded-tl-none text-sm text-gray-200 shadow-sm">
+                    Hello! I am your AI script assistant. Describe your video idea, and I will generate the storyboard and script for you.
+                </div>
+            </div>
+        </div>
+        <!-- Chat Input Area -->
+        <div class="p-3 border-t border-gray-700 bg-gray-800">
+            <div class="relative">
+                <textarea class="w-full bg-gray-900 border border-gray-600 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-blue-500 resize-none placeholder-gray-500" id="chatInput" placeholder="E.g., A cyberpunk city chase scene at night..." rows="3"></textarea>
+                <button class="absolute bottom-2 right-2 bg-blue-600 hover:bg-blue-500 text-white p-1.5 rounded-md transition disabled:opacity-50 disabled:pointer-events-none" onclick="sendMessage()" id="sendBtn">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-amber-500/70 mt-1.5 px-1 hidden" id="noProjectWarning">Please create or select a project first</p>
+        </div>
+    </aside>
+
+    <!-- Center Canvas Area -->
+    <main class="flex-1 flex flex-col relative bg-gray-900">
+        <!-- Canvas Viewport -->
+        <div class="flex-1 canvas-bg relative overflow-hidden flex items-center justify-center p-8" id="canvasViewport">
+            <!-- Empty State -->
+            <div class="text-center text-gray-500" id="emptyCanvasState">
+                <i class="fa-regular fa-image text-4xl mb-3"></i>
+                <p>Select a shot from the timeline to edit</p>
+            </div>
+            <!-- Storyboard Grid (3-Grid) -->
+            <div class="w-full max-w-4xl grid grid-cols-3 gap-4 h-full max-h-[60vh] hidden" id="storyboardGrid">
+                <div class="relative bg-gray-800 rounded-lg border-2 border-gray-700 overflow-hidden group shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition flex items-end justify-center pb-2">
+                        <span class="text-xs font-mono text-white bg-black/50 px-2 rounded">Frame 1</span>
+                    </div>
+                    <div class="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500" id="panel1">
+                        <i class="fa-solid fa-film text-2xl"></i>
+                    </div>
+                </div>
+                <div class="relative bg-gray-800 rounded-lg border-2 border-blue-500 overflow-hidden group shadow-xl ring-2 ring-blue-500/30">
+                    <div class="absolute top-2 right-2 bg-blue-600 text-white text-[10px] px-1.5 py-0.5 rounded font-bold">MAIN</div>
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition flex items-end justify-center pb-2">
+                        <span class="text-xs font-mono text-white bg-black/50 px-2 rounded">Frame 2</span>
+                    </div>
+                    <div class="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500" id="panel2">
+                        <i class="fa-solid fa-film text-2xl"></i>
+                    </div>
+                </div>
+                <div class="relative bg-gray-800 rounded-lg border-2 border-gray-700 overflow-hidden group shadow-xl">
+                    <div class="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition flex items-end justify-center pb-2">
+                        <span class="text-xs font-mono text-white bg-black/50 px-2 rounded">Frame 3</span>
+                    </div>
+                    <div class="w-full h-full bg-gray-700 flex items-center justify-center text-gray-500" id="panel3">
+                        <i class="fa-solid fa-film text-2xl"></i>
+                    </div>
+                </div>
+            </div>
+            <!-- Floating Diagnostics Button -->
+            <button class="absolute top-4 right-4 bg-gray-800/80 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded text-xs border border-gray-600 backdrop-blur transition hidden" onclick="toggleDiagnosticDrawer()" id="diagFloatBtn">
+                <i class="fa-solid fa-stethoscope mr-1"></i> Diagnostics
+            </button>
+        </div>
+
+        <!-- Shot Editor Panel -->
+        <div class="h-auto bg-gray-800 border-t border-gray-700 p-4 shrink-0 z-10 hidden" id="shotEditorPanel">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="font-semibold text-sm text-gray-200" id="editorTitle">Shot Settings</h3>
+                <div class="flex gap-2">
+                    <button class="text-xs bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded border border-gray-600 transition disabled:opacity-50" onclick="regenerateImage()" id="regenImageBtn">
+                        <i class="fa-solid fa-image mr-1"></i> Regen Image
+                    </button>
+                    <button class="text-xs bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 rounded border border-purple-500 transition disabled:opacity-50" onclick="regenerateVideo()" id="regenVideoBtn">
+                        <i class="fa-solid fa-video mr-1"></i> Regen Video
+                    </button>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Shot Description / Script</label>
+                        <textarea class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:border-blue-500 focus:outline-none h-20 resize-none" id="shotScriptInput"></textarea>
+                    </div>
+                    <div class="flex gap-2">
+                        <div class="flex-1">
+                            <label class="block text-xs text-gray-400 mb-1">Camera Move</label>
+                            <select class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:border-blue-500 focus:outline-none" id="cameraMoveSelect">
+                                <option value="static">Static</option>
+                                <option value="pan_left">Pan Left</option>
+                                <option value="pan_right">Pan Right</option>
+                                <option value="zoom_in">Zoom In</option>
+                                <option value="zoom_out">Zoom Out</option>
+                                <option value="tracking">Tracking Shot</option>
+                            </select>
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs text-gray-400 mb-1">Duration (s)</label>
+                            <input class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:border-blue-500 focus:outline-none" id="durationInput" type="number" value="5"/>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Dialogue / Voiceover</label>
+                        <textarea class="w-full bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:border-blue-500 focus:outline-none h-20 resize-none" id="dialogueInput"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Background Music / SFX</label>
+                        <div class="flex gap-2">
+                            <select class="flex-1 bg-gray-900 border border-gray-600 rounded p-2 text-sm text-white focus:border-blue-500 focus:outline-none" id="audioSelect">
+                                <option value="none">None</option>
+                                <option value="ambient_cyber">Ambient Cyber</option>
+                                <option value="orchestral">Orchestral Hit</option>
+                                <option value="rain">Rain &amp; Thunder</option>
+                            </select>
+                            <button class="bg-gray-700 hover:bg-gray-600 text-white px-3 rounded border border-gray-600"><i class="fa-solid fa-play"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Right Diagnostic Drawer -->
+    <aside class="absolute top-0 right-0 w-96 h-full bg-gray-800 border-l border-gray-700 transform translate-x-full transition-transform duration-300 z-30 shadow-2xl flex flex-col" id="diagnosticDrawer">
+        <div class="p-4 border-b border-gray-700 flex justify-between items-center bg-gray-800">
+            <h2 class="font-bold text-sm"><i class="fa-solid fa-bug text-red-400 mr-2"></i>RunningHub Diagnostics</h2>
+            <button class="text-gray-400 hover:text-white" onclick="toggleDiagnosticDrawer()"><i class="fa-solid fa-xmark text-lg"></i></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-4 text-xs font-mono">
+            <div class="bg-gray-900 p-3 rounded border border-gray-700">
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-400">Status:</span>
+                    <span class="font-bold text-green-400" id="diagStatus">-</span>
+                </div>
+                <div class="flex justify-between mb-2">
+                    <span class="text-gray-400">Task ID:</span>
+                    <span class="text-blue-300 cursor-pointer hover:underline" onclick="copyToClipboard(getDiagTaskId())" title="Copy" id="diagTaskId">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Node ID:</span>
+                    <span class="text-gray-300" id="diagNodeId">-</span>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-gray-300 font-bold mb-2 border-b border-gray-700 pb-1">Usage</h3>
+                <div class="grid grid-cols-2 gap-2 text-gray-400">
+                    <div>Cost Time: <span class="text-white" id="diagCostTime">-</span></div>
+                    <div>Completed At: <span class="text-white" id="diagCompletedAt">-</span></div>
+                </div>
+            </div>
+            <div>
+                <h3 class="text-gray-300 font-bold mb-2 border-b border-gray-700 pb-1">Output</h3>
+                <div class="bg-gray-900 p-2 rounded text-green-400 break-words" id="diagOutput">No data</div>
+            </div>
+            <div class="hidden" id="diagErrorSection">
+                <h3 class="text-red-400 font-bold mb-2 border-b border-gray-700 pb-1">Failed Reason</h3>
+                <div class="bg-red-900/20 p-2 rounded text-red-300 border border-red-900/50 mb-2" id="diagFailedReason">-</div>
+                <div class="bg-blue-900/20 p-2 rounded text-blue-300 border border-blue-900/50" id="diagPromptTips">
+                    <i class="fa-solid fa-lightbulb mr-1"></i> Tip: Try adjusting the prompt.
+                </div>
+            </div>
+        </div>
+        <div class="p-4 border-t border-gray-700 bg-gray-800">
+            <button class="w-full bg-gray-600 text-gray-300 py-2 rounded font-medium text-sm cursor-not-allowed transition flex items-center justify-center gap-2 disabled:opacity-50" disabled id="retryBtn" onclick="retryClip()">
+                <i class="fa-solid fa-rotate-right"></i> Create Retry Version
+            </button>
+            <div class="text-[10px] text-gray-500 text-center mt-2">Only available for failed clips. Creates a new version without overwriting.</div>
+        </div>
+    </aside>
+</div>
+
+<!-- Bottom Timeline -->
+<footer class="h-48 bg-gray-800 border-t border-gray-700 flex flex-col shrink-0 z-20">
+    <div class="h-8 bg-gray-900 border-b border-gray-700 flex items-center px-4 justify-between">
+        <div class="flex gap-4 text-xs font-bold text-gray-400">
+            <span class="flex items-center gap-1"><i class="fa-solid fa-layer-group"></i> Timeline</span>
+            <span class="text-gray-600">|</span>
+            <span class="flex items-center gap-1 cursor-pointer hover:text-white" id="snapToggle" onclick="toggleSnap()"><i class="fa-solid fa-magnet"></i> Snap: ON</span>
+        </div>
+        <div class="flex gap-2">
+            <button class="text-gray-400 hover:text-white" onclick="zoomOut()"><i class="fa-solid fa-minus"></i></button>
+            <input class="w-24 accent-blue-500 h-1 bg-gray-600 rounded-lg appearance-none cursor-pointer" type="range" id="zoomSlider" value="50" oninput="handleZoomChange(this.value)"/>
+            <button class="text-gray-400 hover:text-white" onclick="zoomIn()"><i class="fa-solid fa-plus"></i></button>
+        </div>
+    </div>
+    <div class="flex-1 overflow-x-auto overflow-y-hidden p-2 space-y-2 custom-scrollbar">
+        <div class="h-16 flex items-center gap-1 relative min-w-max" id="storyboardTrack">
+            <div class="w-20 h-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-400 rounded border border-gray-600 shrink-0 select-none">SB</div>
+        </div>
+        <div class="h-16 flex items-center gap-1 relative min-w-max" id="videoTrack">
+            <div class="w-20 h-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-400 rounded border border-gray-600 shrink-0 select-none">VID</div>
+        </div>
+    </div>
+</footer>
+
+<!-- Toast Container -->
+<div class="fixed bottom-52 right-4 z-50 flex flex-col gap-2 pointer-events-none" id="toastContainer"></div>
+
+<script>
+// =========================================================================
+// API Configuration
+// =========================================================================
+const API = "http://localhost:3001/api";
+
+// =========================================================================
+// State
+// =========================================================================
+const state = {
+    projects: [],
+    currentProject: null,
+    scenes: [],
+    panelsByScene: {},
+    clipsByScene: {},
+    currentClipByScene: {},
+    selectedShotId: null,
+    isDiagnosticOpen: false,
+    snapOn: true,
+    zoom: 50,
+    chatMessages: [],
+    jobPolling: {},
+    saveTimers: {},
+    diagnosticsCache: {}
+};
+
+// =========================================================================
+// DOM Elements
+// =========================================================================
+const els = {
+    storyboardTrack: document.getElementById('storyboardTrack'),
+    videoTrack: document.getElementById('videoTrack'),
+    chatContainer: document.getElementById('chatContainer'),
+    chatInput: document.getElementById('chatInput'),
+    sendBtn: document.getElementById('sendBtn'),
+    editorTitle: document.getElementById('editorTitle'),
+    shotScriptInput: document.getElementById('shotScriptInput'),
+    cameraMoveSelect: document.getElementById('cameraMoveSelect'),
+    durationInput: document.getElementById('durationInput'),
+    dialogueInput: document.getElementById('dialogueInput'),
+    audioSelect: document.getElementById('audioSelect'),
+    panel1: document.getElementById('panel1'),
+    panel2: document.getElementById('panel2'),
+    panel3: document.getElementById('panel3'),
+    diagnosticDrawer: document.getElementById('diagnosticDrawer'),
+    diagStatus: document.getElementById('diagStatus'),
+    diagOutput: document.getElementById('diagOutput'),
+    diagTaskId: document.getElementById('diagTaskId'),
+    diagNodeId: document.getElementById('diagNodeId'),
+    diagCostTime: document.getElementById('diagCostTime'),
+    diagCompletedAt: document.getElementById('diagCompletedAt'),
+    diagErrorSection: document.getElementById('diagErrorSection'),
+    diagFailedReason: document.getElementById('diagFailedReason'),
+    diagPromptTips: document.getElementById('diagPromptTips'),
+    retryBtn: document.getElementById('retryBtn'),
+    exportBtn: document.getElementById('exportBtn'),
+    apiStatusDot: document.getElementById('apiStatusDot'),
+    apiStatusText: document.getElementById('apiStatusText'),
+    projectSelectorArea: document.getElementById('projectSelectorArea'),
+    noProjectWarning: document.getElementById('noProjectWarning'),
+    emptyCanvasState: document.getElementById('emptyCanvasState'),
+    storyboardGrid: document.getElementById('storyboardGrid'),
+    shotEditorPanel: document.getElementById('shotEditorPanel'),
+    diagFloatBtn: document.getElementById('diagFloatBtn'),
+    regenImageBtn: document.getElementById('regenImageBtn'),
+    regenVideoBtn: document.getElementById('regenVideoBtn'),
+    snapToggle: document.getElementById('snapToggle'),
+    zoomSlider: document.getElementById('zoomSlider')
+};
+
+// =========================================================================
+// API Helpers
+// =========================================================================
+async function apiGet(path) {
+    const res = await fetch(API + path);
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Request failed');
+    return json.data;
+}
+
+async function apiPost(path, body) {
+    const res = await fetch(API + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Request failed');
+    return json.data;
+}
+
+async function apiPatch(path, body) {
+    const res = await fetch(API + path, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+    });
+    const json = await res.json();
+    if (!json.success) throw new Error(json.error || 'Request failed');
+    return json.data;
+}
+
+// =========================================================================
+// Initialization
+// =========================================================================
+async function init() {
+    // Check API health
+    try {
+        await apiGet('/health');
+        setApiStatus('connected');
+    } catch {
+        setApiStatus('disconnected');
+    }
+
+    // Load projects
+    await loadProjects();
+
+    // Input listeners
+    setupInputListeners();
+}
+
+function setApiStatus(status) {
+    const dot = els.apiStatusDot;
+    const text = els.apiStatusText;
+    dot.className = 'w-2 h-2 rounded-full ' +
+        (status === 'connected' ? 'bg-green-500 animate-pulse' :
+         status === 'checking' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500');
+    text.className = status === 'connected' ? 'text-green-400' :
+                     status === 'checking' ? 'text-yellow-400' : 'text-red-400';
+    text.textContent = status === 'connected' ? 'API Connected' :
+                       status === 'checking' ? 'Checking...' : 'API Disconnected';
+}
+
+function setupInputListeners() {
+    let saveTimer = null;
+
+    els.shotScriptInput.addEventListener('input', () => {
+        const scene = getSelectedScene();
+        if (!scene) return;
+        scene.scriptText = els.shotScriptInput.value;
+        scheduleSave(scene);
+    });
+
+    els.cameraMoveSelect.addEventListener('change', () => {
+        const scene = getSelectedScene();
+        if (!scene) return;
+        scene.cameraMovement = els.cameraMoveSelect.value;
+        scheduleSave(scene);
+    });
+
+    els.durationInput.addEventListener('change', () => {
+        const scene = getSelectedScene();
+        if (!scene) return;
+        scene.duration = parseInt(els.durationInput.value) || 5;
+        scheduleSave(scene);
+    });
+
+    els.dialogueInput.addEventListener('input', () => {
+        const scene = getSelectedScene();
+        if (!scene) return;
+        scene.dialogue = els.dialogueInput.value;
+        scheduleSave(scene);
+    });
+
+    els.audioSelect.addEventListener('change', () => {
+        const scene = getSelectedScene();
+        if (!scene) return;
+        scene.audioEffects = els.audioSelect.value;
+        scheduleSave(scene);
+    });
+}
+
+function scheduleSave(scene) {
+    if (state.saveTimers[scene.id]) clearTimeout(state.saveTimers[scene.id]);
+    state.saveTimers[scene.id] = setTimeout(async () => {
+        try {
+            await apiPatch('/scenes/' + scene.id, {
+                scriptText: scene.scriptText,
+                cameraMovement: scene.cameraMovement,
+                duration: scene.duration,
+                dialogue: scene.dialogue,
+                audioEffects: scene.audioEffects
+            });
+            showToast('Shot saved', 'success');
+        } catch (err) {
+            showToast('Save failed: ' + err.message, 'error');
+        }
+    }, 800);
+}
+
+function getSelectedScene() {
+    return state.scenes.find(s => s.id === state.selectedShotId) || null;
+}
+
+// =========================================================================
+// Project Management
+// =========================================================================
+async function loadProjects() {
+    try {
+        state.projects = await apiGet('/projects');
+        renderProjectSelector();
+        if (state.projects.length > 0 && !state.currentProject) {
+            selectProject(state.projects[0].id);
+        }
+    } catch (err) {
+        console.error('Failed to load projects:', err);
+    }
+}
+
+function renderProjectSelector() {
+    let html = '';
+    if (state.projects.length > 0) {
+        html += '<select id="projectSelect" class="bg-gray-700 border border-gray-600 rounded-lg px-2.5 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 cursor-pointer" onchange="selectProject(this.value)">';
+        html += '<option value="">Select project...</option>';
+        state.projects.forEach(p => {
+            const sel = state.currentProject && state.currentProject.id === p.id ? ' selected' : '';
+            html += '<option value="' + p.id + '"' + sel + '>' + escapeHtml(p.title) + '</option>';
+        });
+        html += '</select>';
+    }
+
+    html += '<select id="newAspectRatio" class="bg-gray-700 border border-gray-600 rounded-lg px-1.5 py-1 text-xs text-gray-400 focus:outline-none focus:border-blue-500 w-14 cursor-pointer">';
+    html += '<option value="16:9">16:9</option><option value="9:16">9:16</option></select>';
+
+    html += '<select id="newResolution" class="bg-gray-700 border border-gray-600 rounded-lg px-1.5 py-1 text-xs text-gray-400 focus:outline-none focus:border-blue-500 w-16 cursor-pointer">';
+    html += '<option value="1080p">1080p</option><option value="720p">720p</option><option value="4k">4K</option></select>';
+
+    html += '<input type="text" id="newProjectTitle" placeholder="New project" class="w-28 bg-gray-700 border border-gray-600 rounded-lg px-2.5 py-1 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500" onkeydown="if(event.key===\'Enter\')createProject()">';
+    html += '<button onclick="createProject()" class="inline-flex items-center gap-1 rounded-lg bg-gradient-to-b from-blue-500 to-blue-600 text-white px-3 py-1 text-xs font-medium transition-all hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700 shadow-sm shadow-blue-500/20"><i class="fa-solid fa-folder-plus"></i> Create</button>';
+
+    els.projectSelectorArea.innerHTML = html;
+    els.noProjectWarning.classList.toggle('hidden', !!state.currentProject);
+}
+
+async function createProject() {
+    const title = document.getElementById('newProjectTitle')?.value.trim();
+    if (!title) return showToast('Enter a project name', 'error');
+    const aspectRatio = document.getElementById('newAspectRatio')?.value || '16:9';
+    const resolution = document.getElementById('newResolution')?.value || '1080p';
+
+    try {
+        const project = await apiPost('/projects', { title, aspectRatio, resolution });
+        state.projects.unshift(project);
+        state.currentProject = project;
+        state.scenes = [];
+        state.selectedShotId = null;
+        state.panelsByScene = {};
+        state.clipsByScene = {};
+        state.currentClipByScene = {};
+        document.getElementById('newProjectTitle').value = '';
+        renderProjectSelector();
+        renderTimeline();
+        hideEditor();
+        els.exportBtn.disabled = false;
+        els.noProjectWarning.classList.add('hidden');
+        showToast('Project created: ' + title, 'success');
+    } catch (err) {
+        showToast('Create failed: ' + err.message, 'error');
+    }
+}
+
+async function selectProject(id) {
+    if (!id) {
+        state.currentProject = null;
+        state.scenes = [];
+        state.selectedShotId = null;
+        state.panelsByScene = {};
+        state.clipsByScene = {};
+        renderProjectSelector();
+        renderTimeline();
+        hideEditor();
+        els.exportBtn.disabled = true;
+        els.noProjectWarning.classList.remove('hidden');
+        return;
+    }
+
+    const project = state.projects.find(p => p.id === id);
+    if (!project) return;
+    state.currentProject = project;
+    state.selectedShotId = null;
+    state.panelsByScene = {};
+    state.clipsByScene = {};
+
+    try {
+        state.scenes = await apiGet('/projects/' + id + '/scenes');
+        // Load clips
+        try {
+            const clips = await apiGet('/projects/' + id + '/videos');
+            state.clipsByScene = {};
+            state.currentClipByScene = {};
+            clips.forEach(c => {
+                if (!state.clipsByScene[c.sceneId]) state.clipsByScene[c.sceneId] = [];
+                state.clipsByScene[c.sceneId].push(c);
+                if (c.isCurrent) state.currentClipByScene[c.sceneId] = c;
+            });
+        } catch {}
+    } catch (err) {
+        state.scenes = [];
+        console.error('Failed to load scenes:', err);
+    }
+
+    renderProjectSelector();
+    renderTimeline();
+    hideEditor();
+    els.exportBtn.disabled = false;
+    els.noProjectWarning.classList.add('hidden');
+}
+
+// =========================================================================
+// Chat / Script Generation
+// =========================================================================
+async function sendMessage() {
+    const text = els.chatInput.value.trim();
+    if (!text) return;
+    if (!state.currentProject) {
+        showToast('Please create or select a project first', 'error');
+        return;
+    }
+
+    addChatMessage('user', text);
+    els.chatInput.value = '';
+    els.sendBtn.disabled = true;
+    els.chatInput.disabled = true;
+
+    addChatMessage('ai', '⏳ Generating script, please wait...');
+
+    try {
+        const data = await apiPost('/projects/' + state.currentProject.id + '/chat', { message: text });
+
+        // Remove "generating" message
+        state.chatMessages.pop();
+        rerenderChat();
+
+        addChatMessage('ai', 'Generated script "' + escapeHtml(data.title) + '" with ' + data.sceneCount + ' shots.');
+
+        // Update scenes
+        state.scenes = data.scenes;
+        // Update project title
+        if (state.currentProject) {
+            state.currentProject.title = data.title;
+            // Refresh project list
+            state.projects = await apiGet('/projects');
+            renderProjectSelector();
+        }
+
+        renderTimeline();
+        showToast('Script generated: ' + data.sceneCount + ' shots', 'success');
+
+        // Poll for storyboard generation if it was auto-triggered
+        try {
+            const jobs = await apiGet('/projects/' + state.currentProject.id + '/jobs');
+            const storyJob = jobs.find(j => j.type === 'STORYBOARD_GENERATE' && (j.status === 'queued' || j.status === 'running'));
+            if (storyJob) pollJob(storyJob.id, 'storyboard');
+        } catch {}
+    } catch (err) {
+        // Remove "generating" message
+        state.chatMessages.pop();
+        rerenderChat();
+        addChatMessage('system', '❌ ' + err.message);
+        showToast('Generation failed: ' + err.message, 'error');
+    } finally {
+        els.sendBtn.disabled = false;
+        els.chatInput.disabled = false;
+        els.chatInput.focus();
+    }
+}
+
+function addChatMessage(role, text) {
+    state.chatMessages.push({ role, text, time: new Date().toLocaleTimeString() });
+    renderChatMessage(role, text);
+}
+
+function renderChatMessage(role, text) {
+    const div = document.createElement('div');
+    div.className = 'flex gap-3';
+
+    if (role === 'user') {
+        div.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center shrink-0 border border-gray-500">
+                <i class="fa-solid fa-user text-gray-300 text-xs"></i>
+            </div>
+            <div class="bg-blue-900/30 p-3 rounded-lg rounded-tl-none text-sm text-gray-200 shadow-sm border border-blue-800/30 flex-1">
+                ${escapeHtml(text)}
+            </div>`;
+    } else if (role === 'system') {
+        div.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-rose-600/20 flex items-center justify-center shrink-0 border border-rose-500/20">
+                <span class="text-[10px] text-rose-400 font-bold">!</span>
+            </div>
+            <div class="bg-rose-600/10 p-3 rounded-lg rounded-tl-none text-sm text-rose-300 border border-rose-500/10 flex-1">
+                ${escapeHtml(text)}
+            </div>`;
+    } else {
+        div.innerHTML = `
+            <div class="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center shrink-0 border border-blue-700">
+                <i class="fa-solid fa-robot text-blue-400 text-xs"></i>
+            </div>
+            <div class="bg-gray-700 p-3 rounded-lg rounded-tl-none text-sm text-gray-200 shadow-sm flex-1">
+                ${escapeHtml(text)}
+            </div>`;
+    }
+    els.chatContainer.appendChild(div);
+    els.chatContainer.scrollTop = els.chatContainer.scrollHeight;
+}
+
+function rerenderChat() {
+    els.chatContainer.innerHTML = `
+        <div class="flex gap-3">
+            <div class="w-8 h-8 rounded-full bg-blue-900 flex items-center justify-center shrink-0 border border-blue-700">
+                <i class="fa-solid fa-robot text-blue-400 text-xs"></i>
+            </div>
+            <div class="bg-gray-700 p-3 rounded-lg rounded-tl-none text-sm text-gray-200 shadow-sm">
+                Hello! I am your AI script assistant. Describe your video idea, and I will generate the storyboard and script for you.
+            </div>
+        </div>`;
+    state.chatMessages.forEach(m => renderChatMessage(m.role, m.text));
+}
+
+function clearChatMessages() {
+    state.chatMessages = [];
+    rerenderChat();
+    showToast('Chat cleared', 'info');
+}
+
+// =========================================================================
+// Timeline & Scene Selection
+// =========================================================================
+function renderTimeline() {
+    // Clear existing items (keep the label)
+    els.storyboardTrack.innerHTML = '<div class="w-20 h-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-400 rounded border border-gray-600 shrink-0 select-none">SB</div>';
+    els.videoTrack.innerHTML = '<div class="w-20 h-full bg-gray-700 flex items-center justify-center text-xs font-bold text-gray-400 rounded border border-gray-600 shrink-0 select-none">VID</div>';
+
+    if (state.scenes.length === 0) {
+        els.emptyCanvasState.classList.remove('hidden');
+        els.storyboardGrid.classList.add('hidden');
+        els.shotEditorPanel.classList.add('hidden');
+        els.diagFloatBtn.classList.add('hidden');
+        return;
+    }
+
+    const colors = ['from-blue-900 to-purple-900', 'from-red-900 to-orange-900', 'from-cyan-900 to-blue-900',
+                    'from-emerald-900 to-teal-900', 'from-pink-900 to-rose-900', 'from-indigo-900 to-violet-900'];
+
+    state.scenes.forEach((scene, index) => {
+        const color = colors[index % colors.length];
+        const isSelected = scene.id === state.selectedShotId;
+
+        // Storyboard Item
+        const sbItem = document.createElement('div');
+        sbItem.className = `h-14 w-32 rounded border-2 ${isSelected ? 'border-blue-500 ring-2 ring-blue-500/30' : 'border-gray-600 hover:border-gray-500'} bg-gradient-to-br ${color} cursor-grab active:cursor-grabbing relative shrink-0 transition-all shadow-md overflow-hidden group`;
+        sbItem.draggable = true;
+        sbItem.dataset.index = index;
+        sbItem.dataset.type = 'storyboard';
+        sbItem.dataset.sceneId = scene.id;
+        sbItem.onclick = () => selectShot(scene.id);
+
+        sbItem.innerHTML = `
+            <div class="absolute inset-0 flex opacity-50">
+                <div class="flex-1 border-r border-black/20"></div>
+                <div class="flex-1 border-r border-black/20"></div>
+                <div class="flex-1"></div>
+            </div>
+            <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white px-1 truncate">${escapeHtml(scene.scriptText || scene.title || 'Shot ' + (index+1))}</div>
+            <div class="absolute top-1 right-1 ${scene.status === 'failed' ? 'text-red-500' : 'text-green-500'}">
+                <i class="fa-solid ${scene.status === 'failed' ? 'fa-triangle-exclamation' : 'fa-check'}"></i>
+            </div>`;
+
+        addDragEvents(sbItem);
+        els.storyboardTrack.appendChild(sbItem);
+
+        // Video Item
+        const vidItem = document.createElement('div');
+        vidItem.className = `h-14 w-32 rounded border-2 ${isSelected ? 'border-blue-500' : 'border-gray-600 hover:border-gray-500'} bg-gray-800 cursor-grab active:cursor-grabbing relative shrink-0 transition-all shadow-md flex items-center justify-center overflow-hidden`;
+        vidItem.draggable = true;
+        vidItem.dataset.index = index;
+        vidItem.dataset.type = 'video';
+        vidItem.dataset.sceneId = scene.id;
+        vidItem.onclick = () => selectShot(scene.id);
+
+        const clip = getCurrentClip(scene.id);
+        const clipStatus = clip ? clip.status : 'none';
+
+        vidItem.innerHTML = `
+            <div class="absolute inset-0 bg-gradient-to-r ${color} opacity-30"></div>
+            <i class="fa-solid fa-film text-gray-400 relative z-10"></i>
+            <div class="absolute bottom-0 left-0 right-0 bg-black/60 text-[10px] text-white px-1 text-center">Clip ${index + 1}${clip ? ' v' + clip.version : ''}</div>`;
+
+        addDragEvents(vidItem);
+        els.videoTrack.appendChild(vidItem);
+    });
+}
+
+function getCurrentClip(sceneId) {
+    // Return the current clip for this scene
+    const clips = state.clipsByScene[sceneId] || [];
+    if (clips.length === 0) return null;
+    // Try the tracked current clip
+    if (state.currentClipByScene[sceneId]) return state.currentClipByScene[sceneId];
+    // Fallback: latest version
+    return clips.reduce((latest, c) => (c.version > latest.version ? c : latest), clips[0]);
+}
+
+async function selectShot(id) {
+    state.selectedShotId = (state.selectedShotId === id) ? null : id;
+
+    if (!state.selectedShotId) {
+        hideEditor();
+        renderTimeline();
+        return;
+    }
+
+    const scene = getSelectedScene();
+    if (!scene) return;
+
+    renderTimeline();
+
+    // Show editor
+    els.emptyCanvasState.classList.add('hidden');
+    els.storyboardGrid.classList.remove('hidden');
+    els.shotEditorPanel.classList.remove('hidden');
+    els.diagFloatBtn.classList.remove('hidden');
+
+    const idx = state.scenes.indexOf(scene);
+    els.editorTitle.textContent = 'Shot #' + (idx + 1) + ' Settings';
+    els.shotScriptInput.value = scene.scriptText || '';
+    els.cameraMoveSelect.value = scene.cameraMovement || 'static';
+    els.durationInput.value = scene.duration || 5;
+    els.dialogueInput.value = scene.dialogue || '';
+    els.audioSelect.value = scene.audioEffects || 'none';
+
+    // Load panels
+    await loadPanels(scene.id);
+    updateCanvasPreview(scene);
+
+    // Update diagnostics
+    updateDiagnostics(scene);
+}
+
+function hideEditor() {
+    els.emptyCanvasState.classList.remove('hidden');
+    els.storyboardGrid.classList.add('hidden');
+    els.shotEditorPanel.classList.add('hidden');
+    els.diagFloatBtn.classList.add('hidden');
+}
+
+// =========================================================================
+// Storyboard Panels
+// =========================================================================
+async function loadPanels(sceneId) {
+    if (!state.currentProject) return;
+    try {
+        const panels = await apiGet('/projects/' + state.currentProject.id + '/scenes/' + sceneId + '/panels');
+        state.panelsByScene[sceneId] = panels;
+    } catch (err) {
+        state.panelsByScene[sceneId] = [];
+    }
+}
+
+function updateCanvasPreview(scene) {
+    const projectId = state.currentProject?.id;
+    if (!projectId) return;
+
+    const panels = state.panelsByScene[scene.id] || [];
+
+    for (let i = 0; i < 3; i++) {
+        const panel = panels.find(p => p.panelIndex === i);
+        const panelEl = document.getElementById('panel' + (i + 1));
+        if (!panelEl) continue;
+
+        if (panel && panel.status === 'ready') {
+            const imgUrl = API + '/projects/' + projectId + '/scenes/' + scene.id + '/panels/' + i + '/image?v=' + (panel.version || 1);
+            panelEl.innerHTML = '<img src="' + imgUrl + '" class="w-full h-full object-cover" onerror="this.parentElement.innerHTML=\'<i class=\\\'fa-solid fa-image text-2xl text-gray-500\\\'></i>\'">';
+        } else {
+            panelEl.innerHTML = '<i class="fa-solid fa-film text-2xl text-gray-500"></i>';
+        }
+    }
+}
+
+async function regenerateImage() {
+    const scene = getSelectedScene();
+    if (!scene || !state.currentProject) return;
+
+    showToast('Regenerating storyboard panels...', 'info');
+    els.regenImageBtn.disabled = true;
+
+    try {
+        const result = await apiPost('/projects/' + state.currentProject.id + '/storyboard/generate', { sceneIds: [scene.id] });
+        showToast('Storyboard generation job started', 'success');
+        pollJob(result.jobId, 'storyboard');
+    } catch (err) {
+        showToast('Regen failed: ' + err.message, 'error');
+    } finally {
+        els.regenImageBtn.disabled = false;
+    }
+}
+
+// =========================================================================
+// Video Generation
+// =========================================================================
+async function regenerateVideo() {
+    const scene = getSelectedScene();
+    if (!scene || !state.currentProject) return;
+
+    showToast('Submitting video generation...', 'info');
+    els.regenVideoBtn.disabled = true;
+
+    try {
+        const result = await apiPost('/projects/' + state.currentProject.id + '/videos/generate', { sceneIds: [scene.id] });
+        showToast('Video generation job started', 'success');
+        pollJob(result.jobId, 'video');
+
+        // Reload clips after a delay
+        setTimeout(() => loadAllClips(), 3000);
+    } catch (err) {
+        showToast('Video generation failed: ' + err.message, 'error');
+    } finally {
+        els.regenVideoBtn.disabled = false;
+    }
+}
+
+async function loadAllClips() {
+    if (!state.currentProject) return;
+    try {
+        const clips = await apiGet('/projects/' + state.currentProject.id + '/videos');
+        state.clipsByScene = {};
+        clips.forEach(c => {
+            if (!state.clipsByScene[c.sceneId]) state.clipsByScene[c.sceneId] = [];
+            state.clipsByScene[c.sceneId].push(c);
+            if (c.isCurrent) state.currentClipByScene[c.sceneId] = c;
+        });
+        renderTimeline();
+        const scene = getSelectedScene();
+        if (scene) updateDiagnostics(scene);
+    } catch {}
+}
+
+// =========================================================================
+// Job Polling
+// =========================================================================
+function pollJob(jobId, type) {
+    if (state.jobPolling[jobId]) return;
+
+    state.jobPolling[jobId] = setInterval(async () => {
+        try {
+            const job = await apiGet('/jobs/' + jobId);
+
+            if (job.status === 'success') {
+                clearInterval(state.jobPolling[jobId]);
+                delete state.jobPolling[jobId];
+
+                if (type === 'storyboard') {
+                    const scene = getSelectedScene();
+                    if (scene) {
+                        await loadPanels(scene.id);
+                        updateCanvasPreview(scene);
+                    }
+                    showToast('Storyboard generation complete', 'success');
+                } else if (type === 'video') {
+                    await loadAllClips();
+                    showToast('Video generation complete', 'success');
+                } else if (type === 'export') {
+                    showToast('Export complete!', 'success');
+                } else if (type === 'retry') {
+                    await loadAllClips();
+                    showToast('Retry complete', 'success');
+                }
+            } else if (job.status === 'failed') {
+                clearInterval(state.jobPolling[jobId]);
+                delete state.jobPolling[jobId];
+                showToast('Job failed: ' + (job.error || 'Unknown error'), 'error');
+            } else if (job.status === 'cancelled') {
+                clearInterval(state.jobPolling[jobId]);
+                delete state.jobPolling[jobId];
+                showToast('Job cancelled', 'info');
+            }
+        } catch {
+            clearInterval(state.jobPolling[jobId]);
+            delete state.jobPolling[jobId];
+        }
+    }, 2000);
+}
+
+// =========================================================================
+// Diagnostics
+// =========================================================================
+function updateDiagnostics(scene) {
+    const clip = getCurrentClip(scene.id);
+    if (!clip) {
+        els.diagStatus.textContent = 'NO CLIP';
+        els.diagStatus.className = 'font-bold text-gray-400';
+        els.diagOutput.textContent = 'No video clip available';
+        els.diagOutput.className = 'bg-gray-900 p-2 rounded text-gray-400 break-words';
+        els.diagTaskId.textContent = '-';
+        els.diagNodeId.textContent = '-';
+        els.diagCostTime.textContent = '-';
+        els.diagCompletedAt.textContent = '-';
+        els.diagErrorSection.classList.add('hidden');
+        els.retryBtn.disabled = true;
+        els.retryBtn.className = 'w-full bg-gray-600 text-gray-300 py-2 rounded font-medium text-sm cursor-not-allowed transition flex items-center justify-center gap-2 disabled:opacity-50';
+        return;
+    }
+
+    els.diagStatus.textContent = clip.status.toUpperCase();
+    els.diagStatus.className = 'font-bold ' + (clip.status === 'ready' ? 'text-green-400' : clip.status === 'failed' ? 'text-red-400' : 'text-yellow-400');
+    els.diagTaskId.textContent = clip.taskId || '-';
+    els.diagOutput.textContent = clip.status === 'ready' ? 'Video generated. Resolution: ' + (clip.resolution || '?') : clip.error || 'Processing...';
+    els.diagOutput.className = 'bg-gray-900 p-2 rounded break-words ' + (clip.status === 'failed' ? 'text-red-400' : 'text-green-400');
+
+    if (clip.status === 'failed') {
+        els.diagErrorSection.classList.remove('hidden');
+        els.diagFailedReason.textContent = clip.error || 'Unknown error';
+        els.retryBtn.disabled = false;
+        els.retryBtn.className = 'w-full bg-blue-600 text-white py-2 rounded font-medium text-sm transition flex items-center justify-center gap-2 hover:bg-blue-500 cursor-pointer';
+    } else {
+        els.diagErrorSection.classList.add('hidden');
+        els.retryBtn.disabled = true;
+        els.retryBtn.className = 'w-full bg-gray-600 text-gray-300 py-2 rounded font-medium text-sm cursor-not-allowed transition flex items-center justify-center gap-2 disabled:opacity-50';
+    }
+
+    // Load full diagnostics
+    loadDiagnosticsDetail(scene.id, clip.id);
+}
+
+async function loadDiagnosticsDetail(sceneId, clipId) {
+    if (!state.currentProject) return;
+    try {
+        const detail = await apiGet('/projects/' + state.currentProject.id + '/scenes/' + sceneId + '/videos/' + clipId + '/diagnostics');
+        const d = detail.diagnostics;
+        if (d) {
+            els.diagStatus.textContent = d.status || els.diagStatus.textContent;
+            els.diagTaskId.textContent = detail.taskId || els.diagTaskId.textContent;
+            els.diagNodeId.textContent = d.outputNodeId || '-';
+            els.diagCostTime.textContent = d.taskCostTime ? d.taskCostTime + 's' : '-';
+            els.diagCompletedAt.textContent = d.completedAt ? new Date(d.completedAt).toLocaleString() : '-';
+            state.diagnosticsCache[clipId] = detail;
+        }
+    } catch {}
+}
+
+function toggleDiagnosticDrawer() {
+    state.isDiagnosticOpen = !state.isDiagnosticOpen;
+    if (state.isDiagnosticOpen) {
+        els.diagnosticDrawer.classList.remove('translate-x-full');
+    } else {
+        els.diagnosticDrawer.classList.add('translate-x-full');
+    }
+}
+
+function getDiagTaskId() {
+    const scene = getSelectedScene();
+    if (!scene) return '-';
+    const clip = getCurrentClip(scene.id);
+    return clip ? (clip.taskId || '-') : '-';
+}
+
+async function retryClip() {
+    const scene = getSelectedScene();
+    if (!scene || !state.currentProject) return;
+    const clip = getCurrentClip(scene.id);
+    if (!clip || clip.status !== 'failed') return;
+
+    showToast('Creating retry version...', 'info');
+    els.retryBtn.disabled = true;
+
+    try {
+        const result = await apiPost('/projects/' + state.currentProject.id + '/scenes/' + scene.id + '/videos/' + clip.id + '/retry', { retryReason: clip.error || 'Manual retry' });
+        showToast('Retry job started', 'success');
+        pollJob(result.jobId, 'retry');
+        setTimeout(() => loadAllClips(), 3000);
+    } catch (err) {
+        showToast('Retry failed: ' + err.message, 'error');
+        els.retryBtn.disabled = false;
+    }
+}
+
+// =========================================================================
+// Export
+// =========================================================================
+async function handleExport() {
+    if (!state.currentProject) return;
+
+    els.exportBtn.disabled = true;
+    els.exportBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Checking...';
+
+    try {
+        // Preflight check
+        const preflight = await apiGet('/projects/' + state.currentProject.id + '/export/preflight');
+
+        // Start export
+        const result = await apiPost('/projects/' + state.currentProject.id + '/export', { allowPartial: true });
+        showToast('Export started...', 'info');
+        pollJob(result.jobId, 'export');
+
+        // Wait for completion
+        const checkExport = setInterval(async () => {
+            try {
+                const job = await apiGet('/jobs/' + result.jobId);
+                if (job.status === 'success') {
+                    clearInterval(checkExport);
+                    const res = job.resultJson ? JSON.parse(job.resultJson) : {};
+                    const filename = res.filename || 'output.mp4';
+
+                    els.exportBtn.innerHTML = '<i class="fa-solid fa-download"></i> Download ' + filename;
+                    els.exportBtn.className = 'flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-1.5 rounded text-sm font-medium transition shadow-lg';
+                    els.exportBtn.onclick = () => {
+                        window.open(API + '/projects/' + state.currentProject.id + '/exports/' + filename, '_blank');
+                    };
+                } else if (job.status === 'failed' || job.status === 'cancelled') {
+                    clearInterval(checkExport);
+                    els.exportBtn.innerHTML = '<i class="fa-solid fa-file-export"></i> Export Video';
+                    els.exportBtn.disabled = false;
+                    showToast('Export failed: ' + (job.error || 'Unknown error'), 'error');
+                }
+            } catch { clearInterval(checkExport); }
+        }, 2000);
+
+    } catch (err) {
+        showToast('Export failed: ' + err.message, 'error');
+        els.exportBtn.innerHTML = '<i class="fa-solid fa-file-export"></i> Export Video';
+        els.exportBtn.disabled = false;
+    }
+}
+
+// =========================================================================
+// Drag and Drop
+// =========================================================================
+let draggedItem = null;
+let draggedIndex = null;
+let draggedType = null;
+
+function addDragEvents(item) {
+    item.addEventListener('dragstart', (e) => {
+        draggedItem = item;
+        draggedIndex = parseInt(item.dataset.index);
+        draggedType = item.dataset.type;
+        e.dataTransfer.effectAllowed = 'move';
+        item.classList.add('draggable-source');
+    });
+
+    item.addEventListener('dragend', () => {
+        if (draggedItem) draggedItem.classList.remove('draggable-source');
+        draggedItem = null;
+        draggedIndex = null;
+        draggedType = null;
+        document.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+    });
+
+    item.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (draggedItem !== item && item.dataset.type === draggedType) {
+            item.classList.add('drop-target');
+        }
+    });
+
+    item.addEventListener('dragleave', () => {
+        item.classList.remove('drop-target');
+    });
+
+    item.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        item.classList.remove('drop-target');
+        const targetIndex = parseInt(item.dataset.index);
+
+        if (draggedIndex !== null && targetIndex !== null && draggedIndex !== targetIndex) {
+            const itemToMove = state.scenes[draggedIndex];
+            state.scenes.splice(draggedIndex, 1);
+            state.scenes.splice(targetIndex, 0, itemToMove);
+
+            // Persist reorder
+            try {
+                await apiPost('/scenes/reorder', { sceneIds: state.scenes.map(s => s.id) });
+            } catch (err) {
+                console.error('Reorder failed:', err);
+            }
+
+            renderTimeline();
+            showToast('Timeline order updated', 'info');
+        }
+    });
+}
+
+// =========================================================================
+// Timeline Zoom & Snap
+// =========================================================================
+function toggleSnap() {
+    state.snapOn = !state.snapOn;
+    els.snapToggle.innerHTML = '<i class="fa-solid fa-magnet"></i> Snap: ' + (state.snapOn ? 'ON' : 'OFF');
+    els.snapToggle.className = 'flex items-center gap-1 cursor-pointer hover:text-white ' + (state.snapOn ? 'text-blue-400' : 'text-gray-500');
+}
+
+function handleZoomChange(value) {
+    state.zoom = parseInt(value);
+    applyZoom();
+}
+
+function zoomIn() {
+    state.zoom = Math.min(100, state.zoom + 10);
+    els.zoomSlider.value = state.zoom;
+    applyZoom();
+}
+
+function zoomOut() {
+    state.zoom = Math.max(0, state.zoom - 10);
+    els.zoomSlider.value = state.zoom;
+    applyZoom();
+}
+
+function applyZoom() {
+    const scale = 0.5 + state.zoom / 100;
+    els.storyboardTrack.style.transform = 'scaleX(' + scale + ')';
+    els.storyboardTrack.style.transformOrigin = 'left center';
+    els.videoTrack.style.transform = 'scaleX(' + scale + ')';
+    els.videoTrack.style.transformOrigin = 'left center';
+}
+
+// =========================================================================
+// Toast Notifications
+// =========================================================================
+function showToast(message, type) {
+    const toast = document.createElement('div');
+    const colors = { success: 'bg-green-600 border-green-500', error: 'bg-red-600 border-red-500', info: 'bg-blue-600 border-blue-500' };
+    const icons = { success: 'fa-check-circle', error: 'fa-circle-exclamation', info: 'fa-info-circle' };
+
+    toast.className = 'toast pointer-events-auto flex items-center gap-3 px-4 py-3 rounded shadow-lg border text-white text-sm font-medium ' + (colors[type] || colors.info);
+    toast.innerHTML = '<i class="fa-solid ' + (icons[type] || icons.info) + '"></i> <span>' + escapeHtml(message) + '</span>';
+
+    document.getElementById('toastContainer').appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('hiding');
+        toast.addEventListener('animationend', () => toast.remove());
+    }, 3000);
+}
+
+function copyToClipboard(text) {
+    navigator.clipboard.writeText(String(text)).then(() => showToast('Copied to clipboard', 'success')).catch(() => showToast('Copy failed', 'error'));
+}
+
+// =========================================================================
+// Utilities
+// =========================================================================
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// =========================================================================
+// Keyboard Shortcuts
+// =========================================================================
+document.addEventListener('keydown', (e) => {
+    // Ctrl+Enter to send message
+    if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// =========================================================================
+// Start
+// =========================================================================
+window.addEventListener('DOMContentLoaded', init);
+</script>
+</body>
+</html>

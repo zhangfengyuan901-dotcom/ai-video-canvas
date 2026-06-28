@@ -1,15 +1,18 @@
-﻿// =========================================================================
-// TopBar — 顶部工具条
+// =========================================================================
+// TopBar — 顶部工具条 (redesigned to match UI mockup)
 // =========================================================================
 
 import { useProjectStore } from "../../stores/projectStore";
+import { useUIStore } from "../../stores/uiStore";
 import { useState, useEffect } from "react";
 import { useApi } from "../../hooks/useApi";
 import ExportPreflightModal from "../export/ExportPreflightModal";
 import ApiSettingsPanel from "../settings/ApiSettingsPanel";
+import { Settings, Download, Film, ArrowUpFromLine } from "lucide-react";
 
 export default function TopBar() {
   const currentProject = useProjectStore((s) => s.currentProject);
+  const { apiStatus, setApiStatus } = useUIStore();
   const { post, get } = useApi();
 
   const [exportJobId, setExportJobId] = useState<string | null>(null);
@@ -18,6 +21,14 @@ export default function TopBar() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [showPreflight, setShowPreflight] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
+
+  // ---- Check API health on mount ---------------------------------------
+  useEffect(() => {
+    setApiStatus("checking");
+    get<{ status: string }>("/health")
+      .then(() => setApiStatus("connected"))
+      .catch(() => setApiStatus("disconnected"));
+  }, []);
 
   // ---- Poll export job --------------------------------------------------
 
@@ -33,11 +44,11 @@ export default function TopBar() {
           setExportFilename(result.filename ?? null);
         } else if (job.status === "failed") {
           setExportJobId(null);
-          setExportError(job.error ?? "导出失败");
+          setExportError(job.error ?? "Export failed");
           setTimeout(() => setExportError(null), 8000);
         } else if (job.status === "cancelled") {
           setExportJobId(null);
-          setExportError("已取消");
+          setExportError("Cancelled");
           setTimeout(() => setExportError(null), 5000);
         }
       } catch { /* silent */ }
@@ -83,7 +94,7 @@ export default function TopBar() {
       );
       setExportJobId(data.jobId);
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : "导出失败");
+      setExportError(err instanceof Error ? err.message : "Export failed");
       setTimeout(() => setExportError(null), 5000);
     }
   }
@@ -92,46 +103,103 @@ export default function TopBar() {
   const showDownload = !!exportFilename && currentProject;
 
   return (
-    <header className="h-12 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-4 shrink-0">
-      <h1 className="font-semibold text-sm tracking-wide text-zinc-200">AI 视频画布</h1>
-      <span className="text-zinc-600">|</span>
-      {currentProject ? (
-        <span className="text-sm text-zinc-400">
-          {currentProject.title}
-          <span className="ml-2 text-xs text-zinc-600">
-            {currentProject.aspectRatio} · {currentProject.resolution}
+    <header className="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0 z-20 shadow-md">
+      {/* Left: Logo + Project info */}
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
+          <Film className="h-4 w-4 text-white" />
+        </div>
+        <h1 className="font-bold text-lg tracking-wide text-gray-100">AI Video Canvas</h1>
+        <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded">v1.0.0 Local</span>
+
+        <div className="h-5 w-px bg-gray-700 mx-1" />
+
+        {/* Project info */}
+        {currentProject ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-medium text-gray-200 truncate max-w-[200px]">
+              {currentProject.title}
+            </span>
+            <span className="text-[11px] text-gray-500 shrink-0">
+              {currentProject.aspectRatio} · {currentProject.resolution}
+            </span>
+          </div>
+        ) : (
+          <span className="text-sm text-gray-500">No project open</span>
+        )}
+      </div>
+
+      {/* Right: API status + Export + Settings */}
+      <div className="flex items-center gap-4">
+        {/* API Status */}
+        <div className="flex items-center gap-2 px-3 py-1 bg-gray-700 rounded-full text-xs cursor-pointer hover:bg-gray-600 transition">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              apiStatus === "connected"
+                ? "bg-green-500 animate-pulse"
+                : apiStatus === "checking"
+                  ? "bg-yellow-500 animate-pulse"
+                  : "bg-red-500"
+            }`}
+          />
+          <span
+            className={
+              apiStatus === "connected"
+                ? "text-green-400"
+                : apiStatus === "checking"
+                  ? "text-yellow-400"
+                  : "text-red-400"
+            }
+          >
+            {apiStatus === "connected"
+              ? "API Connected"
+              : apiStatus === "checking"
+                ? "Checking..."
+                : "API Disconnected"}
           </span>
-        </span>
-      ) : (
-        <span className="text-sm text-zinc-600">未打开项目</span>
-      )}
-      <div className="flex-1" />
-      {exportError && (
-        <span className="text-xs text-red-400 mr-2">{exportError}</span>
-      )}
-      {currentProject && (
-        showDownload ? (
+        </div>
+
+        {/* Export error */}
+        {exportError && (
+          <span className="text-[11px] text-rose-400">{exportError}</span>
+        )}
+
+        {/* Export / Download button */}
+        {currentProject && showDownload ? (
           <a
             href={`/api/projects/${currentProject.id}/exports/${exportFilename}`}
             download
-            className="text-xs px-3 py-1 rounded font-medium bg-green-700 hover:bg-green-600 text-white transition-colors no-underline"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-all hover:bg-emerald-500/20 hover:text-emerald-300 no-underline"
           >
-            下载 {exportFilename}
+            <Download className="h-3.5 w-3.5" />
+            Download {exportFilename}
           </a>
-        ) : (
+        ) : currentProject ? (
           <button
             onClick={handleExportClick}
             disabled={isExporting}
-            className={`text-xs px-3 py-1 rounded font-medium transition-colors ${
+            className={`flex items-center gap-2 px-4 py-1.5 rounded text-sm font-medium transition shadow-lg ${
               isExporting
                 ? "bg-blue-600/20 text-blue-400 animate-pulse cursor-not-allowed"
-                : "bg-green-700 hover:bg-green-600 text-white"
+                : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/50"
             }`}
           >
-            {isExporting ? `导出中... ${exportProgress}%` : "导出完整视频"}
+            <ArrowUpFromLine className="h-4 w-4" />
+            {isExporting ? `Exporting... ${exportProgress}%` : "Export Video"}
           </button>
-        )
-      )}
+        ) : null}
+
+        {/* Settings */}
+        <button
+          onClick={() => setShowApiSettings(true)}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-all hover:text-gray-200 hover:bg-gray-700 active:bg-gray-600"
+          title="API Settings"
+        >
+          <Settings className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Modals */}
       {showPreflight && currentProject && (
         <ExportPreflightModal
           projectId={currentProject.id}
@@ -142,13 +210,6 @@ export default function TopBar() {
       {showApiSettings && (
         <ApiSettingsPanel onClose={() => setShowApiSettings(false)} />
       )}
-          <button
-            onClick={() => setShowApiSettings(true)}
-            className="text-xs px-3 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors"
-          >
-            API 配置
-          </button>
-      <span className="text-xs text-zinc-600">Phase 4 · 图生视频</span>
     </header>
   );
 }
