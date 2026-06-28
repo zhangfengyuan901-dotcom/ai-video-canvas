@@ -13,6 +13,18 @@ import GradientButton from "../ui/GradientButton";
 import ClipDiagnosticsPanel from "./ClipDiagnosticsPanel";
 import { Play, RefreshCw, AlertCircle, FileWarning, Video as VideoIcon, Bug } from "lucide-react";
 
+const VIDEO_MODELS = [
+  { id: "default", label: "AI App (image→video)" },
+  { id: "1", label: "全能视频V3.1 Fast" },
+  { id: "2", label: "全能视频X" },
+  { id: "3", label: "可灵 v3.0 Pro" },
+  { id: "4", label: "全能视频V3.1 Pro" },
+  { id: "5", label: "Vidu Q3 Pro" },
+  { id: "6", label: "全能视频S" },
+  { id: "7", label: "海螺 Hailuo" },
+  { id: "8", label: "Seedance 2.0" },
+];
+
 interface SceneVideoPanelProps {
   sceneId: string;
 }
@@ -29,6 +41,7 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
   var [localJobProgress, setLocalJobProgress] = useState(0);
   var [localRetryJobId, setLocalRetryJobId] = useState<string | null>(null);
   var [retryingClipId, setRetryingClipId] = useState<string | null>(null);
+  var [videoModelId, setVideoModelId] = useState<string>("default");
 
   var allClips = clipsByScene[sceneId] ?? [];
   var currentClip = getCurrentClip(sceneId);
@@ -166,6 +179,13 @@ export default function SceneVideoPanel({ sceneId }: SceneVideoPanelProps) {
           <RefreshCw className="h-3 w-3" />
           Refresh
         </button>
+        <select
+          value={videoModelId}
+          onChange={function (e) { setVideoModelId(e.target.value); }}
+          className="bg-gray-700 border border-gray-600 rounded px-1.5 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:border-blue-500"
+        >
+          {VIDEO_MODELS.map(function (m) { return <option key={m.id} value={m.id}>{m.label}</option>; })}
+        </select>
         <button
           onClick={function (e) { e.stopPropagation(); handleGenerate(); }}
           disabled={isGeneratingVideo || !currentProject}

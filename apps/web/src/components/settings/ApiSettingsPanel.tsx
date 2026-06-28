@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 import { useApiSettings } from "../../hooks/useApiSettings";
 import type { ApiSettingsStatus, ApiSettingsCheckResult } from "../../hooks/useApiSettings";
 import RhCliPanel from "../rhcli/RhCliPanel";
+import { useImageProviderStore } from "../../stores/imageProviderStore";
 
 interface ApiSettingsPanelProps {
   onClose: () => void;
@@ -13,6 +14,7 @@ interface ApiSettingsPanelProps {
 
 export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
   const { getApiSettings, saveApiSettings, checkApiSettings } = useApiSettings();
+  const { provider, setProvider, runninghubImageModel, setRunninghubImageModel } = useImageProviderStore();
 
   const [status, setStatus] = useState<ApiSettingsStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -159,6 +161,25 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
                   </label>
                 )}
                 <p className="text-[10px] text-gray-600">支持 OpenAI 兼容接口（/v1/chat/completions），可接入 Packy、RunningHub LLM、Qwen 等。</p>
+              </section>
+
+              <hr className="border-gray-700" />
+
+              {/* Image Provider Toggle */}
+              <section className="space-y-2">
+                <span className="text-xs font-medium text-gray-300">Image Provider</span>
+                <div className="flex gap-2 items-center">
+                  <button onClick={() => setProvider("packy")}
+                    className={`flex-1 text-[10px] py-1.5 rounded font-medium transition ${
+                      provider === "packy" ? "bg-blue-600 text-white" : "bg-gray-700 text-gray-400 hover:text-gray-200"}`}>
+                    Packy (gpt-image-2)
+                  </button>
+                  <button onClick={() => setProvider("runninghub")}
+                    className={`flex-1 text-[10px] py-1.5 rounded font-medium transition ${
+                      provider === "runninghub" ? "bg-purple-600 text-white" : "bg-gray-700 text-gray-400 hover:text-gray-200"}`}>
+                    RunningHub (5 models)
+                  </button>
+                </div>
               </section>
 
               <hr className="border-gray-700" />

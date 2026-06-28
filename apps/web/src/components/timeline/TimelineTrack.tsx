@@ -10,6 +10,18 @@ import { useVideoClips } from "../../hooks/useVideoClips";
 import TimelineItem from "./TimelineItem";
 import { VideoIcon, Image } from "lucide-react";
 
+const VIDEO_MODEL_OPTIONS = [
+  { id: "default", label: "AI App (image→video)" },
+  { id: "1", label: "全能视频V3.1 Fast" },
+  { id: "2", label: "全能视频X" },
+  { id: "3", label: "可灵 v3.0 Pro" },
+  { id: "4", label: "全能视频V3.1 Pro" },
+  { id: "5", label: "Vidu Q3 Pro" },
+  { id: "6", label: "全能视频S" },
+  { id: "7", label: "海螺 Hailuo" },
+  { id: "8", label: "Seedance 2.0" },
+];
+
 interface TimelineTrackProps {
   label: string;
   type: "storyboard" | "video";
@@ -31,6 +43,7 @@ export default function TimelineTrack({ label, type, zoom = 50 }: TimelineTrackP
   const [selectedClipId, setSelectedClipId] = useState<Record<string, string>>({});
   const [videoJobId, setVideoJobId] = useState<string | null>(null);
   const [videoJobProgress, setVideoJobProgress] = useState<number>(0);
+  const [videoModelId, setVideoModelId] = useState<string>("default");
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
 
@@ -281,6 +294,8 @@ export default function TimelineTrack({ label, type, zoom = 50 }: TimelineTrackP
         }
         isGenerating={isGeneratingVideo}
         progress={videoJobProgress}
+        videoModelId={videoModelId}
+        onVideoModelChange={setVideoModelId}
       />
       <div className="flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2">
         <div
@@ -330,6 +345,8 @@ function TrackHeader({
   onGenerateAll,
   isGenerating,
   progress,
+  videoModelId,
+  onVideoModelChange,
 }: {
   label: string;
   count: number;
@@ -338,6 +355,8 @@ function TrackHeader({
   onGenerateAll?: () => void;
   isGenerating?: boolean;
   progress?: number;
+  videoModelId?: string;
+  onVideoModelChange?: (id: string) => void;
 }) {
   return (
     <div className="h-7 flex items-center px-3 gap-2 shrink-0">
@@ -349,6 +368,18 @@ function TrackHeader({
         {count > 0 ? `${count} clips` : ""}
       </span>
       <div className="flex-1" />
+
+      {type === "video" && onVideoModelChange && (
+        <select
+          value={videoModelId ?? "default"}
+          onChange={(e) => onVideoModelChange(e.target.value)}
+          className="bg-gray-700 border border-gray-600 rounded px-1 py-0.5 text-[10px] text-gray-300 focus:outline-none focus:border-blue-500"
+        >
+          {VIDEO_MODEL_OPTIONS.map((m) => (
+            <option key={m.id} value={m.id}>{m.label}</option>
+          ))}
+        </select>
+      )}
 
       {type === "video" && onGenerateAll && (
         <button

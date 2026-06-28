@@ -2,8 +2,27 @@
   "name": "@ai-video-canvas/desktop",
   "version": "0.1.0",
   "private": true,
-  "description": "Electron 桌面壳 — Phase 2 实现",
-  "scripts": {},
+  "description": "AI Video Canvas — Electron Desktop Shell",
+  "main": "main.js",
+  "scripts": {
+    "dev": "electron .",
+    "start": "electron .",
+    "build": "electron-builder"
+  },
   "dependencies": {},
-  "devDependencies": {}
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "com.ai-video-canvas.desktop",
+    "productName": "AI Video Canvas",
+    "files": [
+      "main.js",
+      "preload.js"
+    ],
+    "directories": {
+      "output": "dist-electron"
+    }
+  }
 }
