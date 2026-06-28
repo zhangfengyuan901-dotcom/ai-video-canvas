@@ -24,7 +24,14 @@ const app = Fastify({ logger: true });
 // ---- Plugins -----------------------------------------------------------
 
 await app.register(cors, {
-  origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+  origin: (origin, cb) => {
+    // Allow localhost dev server, file:// (Origin: null), and no-origin requests
+    if (!origin || origin === "null" || origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:")) {
+      cb(null, true);
+    } else {
+      cb(null, false); // Not allowed
+    }
+  },
   methods: ["GET", "POST", "PATCH", "DELETE"],
 });
 
