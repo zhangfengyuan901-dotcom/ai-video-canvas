@@ -5,6 +5,7 @@
 import { useState, useEffect } from "react";
 import { useApiSettings } from "../../hooks/useApiSettings";
 import type { ApiSettingsStatus, ApiSettingsCheckResult } from "../../hooks/useApiSettings";
+import RhCliPanel from "../rhcli/RhCliPanel";
 
 interface ApiSettingsPanelProps {
   onClose: () => void;
@@ -245,7 +246,8 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
                 </div>
               )}
 
-              <p className="text-[10px] text-gray-500 text-center">后续会在这里接入更多模型与服务配置。</p>
+              <hr className="border-gray-700" />
+              <RhCliPanel />
             </>
           )}
         </div>

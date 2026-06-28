@@ -14,6 +14,7 @@ import { jobRoutes } from "./routes/jobs.js";
 import { exportRoutes } from "./routes/export.js";
 import { settingsRoutes } from "./routes/settings.js";
 import { referenceAssetRoutes } from "./routes/referenceAssets.js";
+import { rhCliRoutes } from "./routes/rhcli.js";
 import { startBackgroundPoller } from "./services/VideoService.js";
 
 const PORT = parseInt(process.env.SERVER_PORT ?? "3001", 10);
@@ -58,6 +59,7 @@ await app.register(jobRoutes, { prefix: "/api" });
 await app.register(exportRoutes, { prefix: "/api" });
 await app.register(settingsRoutes, { prefix: "/api" });
 await app.register(referenceAssetRoutes, { prefix: "/api" });
+await app.register(rhCliRoutes, { prefix: "/api" });
 
 // ---- Health check ------------------------------------------------------
 
