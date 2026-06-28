@@ -3,12 +3,11 @@
 // API 约束见 docs/packy-gpt-image-2.md
 // =========================================================================
 
-import { createWriteStream } from "node:fs";
+import { createWriteStream, existsSync, copyFileSync } from "node:fs";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
 import { getEffectiveApiConfig } from "../settings/ApiConfigService.js";
-
-const BASE_URL = process.env.PACKY_BASE_URL ?? "https://www.packyapi.com/v1";
+import { runImage } from "./RunningHubClient.js";
 
 // ---- 图片尺寸映射 ------------------------------------------------------
 
@@ -85,14 +84,39 @@ export async function downloadImage(remoteUrl: string, localPath: string): Promi
   await pipeline(Readable.fromWeb(response.body as any), createWriteStream(localPath));
 }
 
-// ---- 生成并下载（组合操作）----------------------------------------------
+// ---- 生成并下载（组合操作，Packy 失败时自动兜底 RunningHub）--------------
 
 export async function generateAndDownload(
   prompt: string,
   localPath: string,
   aspectRatio: "16:9" | "9:16" = "16:9",
 ): Promise<GenerationResult> {
-  const result = await generateImage(prompt, aspectRatio);
-  await downloadImage(result.remoteUrl, localPath);
-  return result;
+  // Try Packy first
+  try {
+    const result = await generateImage(prompt, aspectRatio);
+    await downloadImage(result.remoteUrl, localPath);
+    return result;
+  } catch (packyErr) {
+    const msg = packyErr instanceof Error ? packyErr.message : "";
+    console.warn("[PackyImageClient] Packy failed, falling back to RunningHub:", msg.slice(0, 120));
+
+    // Fallback to RunningHub image generation
+    try {
+      const rhConfig = getEffectiveApiConfig().runninghub;
+      if (!rhConfig.apiKey) {
+        throw new Error("RunningHub API key not configured for image fallback");
+      }
+
+      const result = await runImage(prompt, "1"); // Use model 1 (全能图片PRO)
+      if (result.files && result.files.length > 0) {
+        // Copy the generated file to the expected localPath
+        copyFileSync(result.files[0], localPath);
+        return { remoteUrl: `runninghub:${result.taskId}`, revisedPrompt: undefined };
+      }
+      throw new Error("RunningHub image generation returned no files");
+    } catch (rhErr) {
+      const rhMsg = rhErr instanceof Error ? rhErr.message : "Unknown";
+      throw new Error(`Image generation failed — Packy: ${msg.slice(0, 80)} | RunningHub: ${rhMsg.slice(0, 80)}`);
+    }
+  }
 }
