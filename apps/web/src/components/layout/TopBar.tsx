@@ -1,8 +1,9 @@
-﻿// =========================================================================
-// TopBar — 顶部工具条 (redesigned with glassmorphism + gradient buttons)
+// =========================================================================
+// TopBar — 顶部工具条 (redesigned to match UI mockup)
 // =========================================================================
 
 import { useProjectStore } from "../../stores/projectStore";
+import { useUIStore } from "../../stores/uiStore";
 import { useState, useEffect } from "react";
 import { useApi } from "../../hooks/useApi";
 import ExportPreflightModal from "../export/ExportPreflightModal";
@@ -11,6 +12,7 @@ import { Settings, Download, Film, ArrowUpFromLine } from "lucide-react";
 
 export default function TopBar() {
   const currentProject = useProjectStore((s) => s.currentProject);
+  const { apiStatus, setApiStatus } = useUIStore();
   const { post, get } = useApi();
 
   const [exportJobId, setExportJobId] = useState<string | null>(null);
@@ -19,6 +21,14 @@ export default function TopBar() {
   const [exportError, setExportError] = useState<string | null>(null);
   const [showPreflight, setShowPreflight] = useState(false);
   const [showApiSettings, setShowApiSettings] = useState(false);
+
+  // ---- Check API health on mount ---------------------------------------
+  useEffect(() => {
+    setApiStatus("checking");
+    get<{ status: string }>("/health")
+      .then(() => setApiStatus("connected"))
+      .catch(() => setApiStatus("disconnected"));
+  }, []);
 
   // ---- Poll export job --------------------------------------------------
 
@@ -34,11 +44,11 @@ export default function TopBar() {
           setExportFilename(result.filename ?? null);
         } else if (job.status === "failed") {
           setExportJobId(null);
-          setExportError(job.error ?? "导出失败");
+          setExportError(job.error ?? "Export failed");
           setTimeout(() => setExportError(null), 8000);
         } else if (job.status === "cancelled") {
           setExportJobId(null);
-          setExportError("已取消");
+          setExportError("Cancelled");
           setTimeout(() => setExportError(null), 5000);
         }
       } catch { /* silent */ }
@@ -84,7 +94,7 @@ export default function TopBar() {
       );
       setExportJobId(data.jobId);
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : "导出失败");
+      setExportError(err instanceof Error ? err.message : "Export failed");
       setTimeout(() => setExportError(null), 5000);
     }
   }
@@ -93,41 +103,68 @@ export default function TopBar() {
   const showDownload = !!exportFilename && currentProject;
 
   return (
-    <header className="h-14 bg-[#08090c]/80 border-b border-white/[0.06] flex items-center px-5 gap-3 shrink-0 backdrop-blur-md">
-      {/* Logo / Product name */}
-      <div className="flex items-center gap-2.5 shrink-0">
-        <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-blue-500 to-violet-600 shadow-sm shadow-blue-500/20">
-          <Film className="h-3.5 w-3.5 text-white" />
+    <header className="h-14 bg-gray-800 border-b border-gray-700 flex items-center justify-between px-4 shrink-0 z-20 shadow-md">
+      {/* Left: Logo + Project info */}
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded flex items-center justify-center">
+          <Film className="h-4 w-4 text-white" />
         </div>
-        <span className="text-sm font-semibold tracking-tight text-zinc-100">
-          AI 视频画布
-        </span>
-      </div>
+        <h1 className="font-bold text-lg tracking-wide text-gray-100">AI Video Canvas</h1>
+        <span className="text-xs text-gray-400 bg-gray-700 px-2 py-0.5 rounded">v1.0.0 Local</span>
 
-      <div className="h-5 w-px bg-white/[0.06]" />
+        <div className="h-5 w-px bg-gray-700 mx-1" />
 
-      {/* Project info */}
-      <div className="flex items-center gap-2 min-w-0 flex-1">
+        {/* Project info */}
         {currentProject ? (
-          <>
-            <span className="text-sm font-medium text-zinc-200 truncate">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-medium text-gray-200 truncate max-w-[200px]">
               {currentProject.title}
             </span>
-            <span className="text-[11px] text-zinc-500 shrink-0">
+            <span className="text-[11px] text-gray-500 shrink-0">
               {currentProject.aspectRatio} · {currentProject.resolution}
             </span>
-          </>
+          </div>
         ) : (
-          <span className="text-sm text-zinc-600">未打开项目</span>
+          <span className="text-sm text-gray-500">No project open</span>
         )}
       </div>
 
-      {/* Actions */}
-      <div className="flex items-center gap-2 shrink-0">
+      {/* Right: API status + Export + Settings */}
+      <div className="flex items-center gap-4">
+        {/* API Status */}
+        <div className="flex items-center gap-2 px-3 py-1 bg-gray-700 rounded-full text-xs cursor-pointer hover:bg-gray-600 transition">
+          <div
+            className={`w-2 h-2 rounded-full ${
+              apiStatus === "connected"
+                ? "bg-green-500 animate-pulse"
+                : apiStatus === "checking"
+                  ? "bg-yellow-500 animate-pulse"
+                  : "bg-red-500"
+            }`}
+          />
+          <span
+            className={
+              apiStatus === "connected"
+                ? "text-green-400"
+                : apiStatus === "checking"
+                  ? "text-yellow-400"
+                  : "text-red-400"
+            }
+          >
+            {apiStatus === "connected"
+              ? "API Connected"
+              : apiStatus === "checking"
+                ? "Checking..."
+                : "API Disconnected"}
+          </span>
+        </div>
+
+        {/* Export error */}
         {exportError && (
           <span className="text-[11px] text-rose-400">{exportError}</span>
         )}
 
+        {/* Export / Download button */}
         {currentProject && showDownload ? (
           <a
             href={`/api/projects/${currentProject.id}/exports/${exportFilename}`}
@@ -135,40 +172,31 @@ export default function TopBar() {
             className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-400 transition-all hover:bg-emerald-500/20 hover:text-emerald-300 no-underline"
           >
             <Download className="h-3.5 w-3.5" />
-            下载 {exportFilename}
+            Download {exportFilename}
           </a>
         ) : currentProject ? (
           <button
             onClick={handleExportClick}
             disabled={isExporting}
-            className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+            className={`flex items-center gap-2 px-4 py-1.5 rounded text-sm font-medium transition shadow-lg ${
               isExporting
                 ? "bg-blue-600/20 text-blue-400 animate-pulse cursor-not-allowed"
-                : "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700"
+                : "bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/50"
             }`}
           >
-            {isExporting ? (
-              <>导出中... {exportProgress}%</>
-            ) : (
-              <>
-                <ArrowUpFromLine className="h-3.5 w-3.5" />
-                导出
-              </>
-            )}
+            <ArrowUpFromLine className="h-4 w-4" />
+            {isExporting ? `Exporting... ${exportProgress}%` : "Export Video"}
           </button>
         ) : null}
 
+        {/* Settings */}
         <button
           onClick={() => setShowApiSettings(true)}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 transition-all hover:text-zinc-300 hover:bg-white/[0.06] active:bg-white/[0.03]"
-          title="API 配置"
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition-all hover:text-gray-200 hover:bg-gray-700 active:bg-gray-600"
+          title="API Settings"
         >
-          <Settings className="h-3.5 w-3.5" />
+          <Settings className="h-4 w-4" />
         </button>
-
-        <span className="rounded-md border border-zinc-700/30 bg-zinc-800/60 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500">
-          Phase 4 · 图生视频
-        </span>
       </div>
 
       {/* Modals */}

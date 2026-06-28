@@ -20,9 +20,9 @@ interface StatusBadgeProps {
 }
 
 const statusStyleMap: Record<string, string> = {
-  default: "bg-zinc-800 text-zinc-400 border-zinc-700/50",
-  idle: "bg-zinc-800/60 text-zinc-500 border-zinc-700/30",
-  draft: "bg-zinc-800 text-zinc-400 border-zinc-700/50",
+  default: "bg-gray-700 text-gray-400 border-gray-600/50",
+  idle: "bg-gray-700/60 text-gray-500 border-gray-600/30",
+  draft: "bg-gray-700 text-gray-400 border-gray-600/50",
   pending: "bg-amber-600/15 text-amber-400 border-amber-600/20",
   waiting: "bg-amber-600/15 text-amber-400 border-amber-600/20",
   running: "bg-blue-600/15 text-blue-400 border-blue-600/20",

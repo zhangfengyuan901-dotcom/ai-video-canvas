@@ -164,11 +164,11 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
     <div className="space-y-3">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <span className="text-xs font-medium text-zinc-400 tracking-wide">三图素材</span>
+        <span className="text-xs font-medium text-gray-400 tracking-wide">三图素材</span>
         {currentProject && (
           <button
             onClick={loadPanels}
-            className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 transition-all hover:bg-white/[0.04] hover:text-zinc-300"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 transition-all hover:bg-gray-700 hover:text-gray-300"
           >
             <RefreshCw className="h-3 w-3" />
             刷新
@@ -196,7 +196,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
           return (
             <div
               key={index}
-              className="aspect-video rounded-xl border border-white/[0.06] bg-zinc-900/60 overflow-hidden relative group"
+              className="aspect-video rounded-xl border border-gray-700 bg-gray-800/60 overflow-hidden relative group"
             >
               {/* Image content */}
               {panel?.status === "ready" ? (
@@ -215,13 +215,13 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
                   <div className="text-center">
                     <StatusBadge status="failed" />
                     {panel.error && (
-                      <p className="text-[9px] text-zinc-500 mt-1 line-clamp-2">{panel.error}</p>
+                      <p className="text-[9px] text-gray-500 mt-1 line-clamp-2">{panel.error}</p>
                     )}
                   </div>
                 </div>
               ) : (
                 <div className="h-full flex items-center justify-center">
-                  <span className="text-[10px] text-zinc-600">
+                  <span className="text-[10px] text-gray-500">
                     {isGeneratingGlob ? "生成中..." : "点击生成"}
                   </span>
                 </div>
@@ -229,14 +229,14 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
 
               {/* Panel label */}
               <div className="absolute top-1.5 left-1.5 z-10">
-                <span className="text-[10px] bg-black/60 text-zinc-300 px-1.5 py-0.5 rounded-md backdrop-blur-sm leading-none">
+                <span className="text-[10px] bg-black/60 text-gray-300 px-1.5 py-0.5 rounded-md backdrop-blur-sm leading-none">
                   {label}
                 </span>
               </div>
 
               {/* Upload/clear overlay */}
               <div className="absolute inset-x-1 bottom-1 z-20 hidden group-hover:flex gap-1 justify-center">
-                <label className="inline-flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-sm text-zinc-300 px-2 py-1 text-[10px] cursor-pointer transition-colors hover:bg-black/90 hover:text-white">
+                <label className="inline-flex items-center gap-1 rounded-md bg-black/70 backdrop-blur-sm text-gray-300 px-2 py-1 text-[10px] cursor-pointer transition-colors hover:bg-black/90 hover:text-white">
                   <Upload className="h-2.5 w-2.5" />
                   {uploadingPanel === index ? "上传中..." : "上传"}
                   <input
@@ -266,7 +266,7 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
       {/* Storyboard Review Controls */}
       {panels.filter(p => p.status === "ready" && p.localPath).length === 3 && currentProject && (
         <div className="flex items-center gap-2 pt-1">
-          <span className="text-[10px] text-zinc-500">故事板审核：</span>
+          <span className="text-[10px] text-gray-500">故事板审核：</span>
           <button
             onClick={async (e) => {
               e.stopPropagation();

@@ -27,15 +27,15 @@ export default function EmptyState({
       )}
     >
       {icon && (
-        <div className="text-zinc-600/80">{icon}</div>
+        <div className="text-gray-600">{icon}</div>
       )}
       {title && (
-        <p className={cn("font-medium text-zinc-400", compact ? "text-xs" : "text-sm")}>
+        <p className={cn("font-medium text-gray-400", compact ? "text-xs" : "text-sm")}>
           {title}
         </p>
       )}
       {message && (
-        <p className={cn("text-zinc-600 max-w-[260px]", compact ? "text-[10px]" : "text-xs")}>
+        <p className={cn("text-gray-500 max-w-[260px]", compact ? "text-[10px]" : "text-xs")}>
           {message}
         </p>
       )}

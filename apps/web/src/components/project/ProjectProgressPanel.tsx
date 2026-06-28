@@ -279,7 +279,7 @@ export default function ProjectProgressPanel() {
         action={
           <button
             onClick={(e) => { e.stopPropagation(); refreshProgress(); }}
-            className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-2 py-1 text-[10px] font-medium text-zinc-500 transition-all hover:bg-white/[0.04] hover:text-zinc-300"
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-700 px-2 py-1 text-[10px] font-medium text-gray-500 transition-all hover:bg-gray-700 hover:text-gray-300"
           >
             <RefreshCw className="h-3 w-3" />
             刷新
@@ -321,22 +321,22 @@ export default function ProjectProgressPanel() {
 
       {/* Loading indicator for panels */}
       {loadingPanels && (
-        <p className="text-[10px] text-zinc-500 animate-pulse">正在加载素材状态...</p>
+        <p className="text-[10px] text-gray-500 animate-pulse">正在加载素材状态...</p>
       )}
 
       <SoftDivider />
 
       {/* Next action */}
-      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-3">
+      <div className="rounded-xl bg-gray-800 border border-gray-700 p-4 space-y-3">
         {nextAction === "create_script" && (
           <>
-            <p className="text-xs text-zinc-400">下一步：在左侧输入创意，生成视频脚本。</p>
+            <p className="text-xs text-gray-400">下一步：在左侧输入创意，生成视频脚本。</p>
           </>
         )}
 
         {nextAction === "generate_missing_storyboards" && (
           <>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-gray-400">
               还有 <span className="text-amber-400 font-medium">{missingStoryboardSceneIds.length}</span> 个镜头缺少三图素材
             </p>
             <div className="flex gap-2">
@@ -366,7 +366,7 @@ export default function ProjectProgressPanel() {
 
         {nextAction === "generate_missing_videos" && (
           <>
-            <p className="text-xs text-zinc-400">
+            <p className="text-xs text-gray-400">
               三图素材已完成，还有 <span className="text-blue-400 font-medium">{missingVideoSceneIds.length}</span> 个镜头缺少视频
             </p>
             <div className="flex gap-2">

@@ -38,10 +38,10 @@ export default function ScriptSegmentCard({ scene, index, totalCount, onFieldCha
   }
 
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3 transition-all hover:border-white/[0.10]">
+    <div className="rounded-xl border border-gray-700 bg-gray-800 p-4 space-y-3 transition-all hover:border-gray-600">
       {/* Header */}
-      <div className="flex items-center gap-2 pb-2 border-b border-white/[0.06]">
-        <span className="text-[11px] text-zinc-500 font-mono font-medium">#{index + 1}</span>
+      <div className="flex items-center gap-2 pb-2 border-b border-gray-700">
+        <span className="text-[11px] text-gray-500 font-mono font-medium">#{index + 1}</span>
         <div className="flex-1" />
         <StatusBadge status={scene.status as any} />
         {saving && <StatusBadge status="running" label="保存中..." pulse />}
@@ -53,20 +53,20 @@ export default function ScriptSegmentCard({ scene, index, totalCount, onFieldCha
           const value = String(scene[key] ?? "");
           return (
             <div key={key} className={type === "textarea" ? "col-span-2" : ""}>
-              <label className="text-[10px] text-zinc-500 block mb-0.5 font-medium">{label}</label>
+              <label className="text-[10px] text-gray-500 block mb-0.5 font-medium">{label}</label>
               {type === "textarea" ? (
                 <textarea
                   value={value}
                   onChange={(e) => handleChange(key, e.target.value)}
                   rows={2}
-                  className="w-full bg-zinc-800/40 border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-500/40 focus:bg-zinc-800/60 resize-none transition-colors"
+                  className="w-full bg-gray-700/40 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/40 focus:bg-gray-700/60 resize-none transition-colors"
                 />
               ) : (
                 <input
                   type={key === "duration" ? "number" : "text"}
                   value={value}
                   onChange={(e) => handleChange(key, key === "duration" ? Number(e.target.value) : e.target.value)}
-                  className="w-full bg-zinc-800/40 border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-500/40 focus:bg-zinc-800/60 transition-colors"
+                  className="w-full bg-gray-700/40 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/40 focus:bg-gray-700/60 transition-colors"
                 />
               )}
             </div>
@@ -75,23 +75,23 @@ export default function ScriptSegmentCard({ scene, index, totalCount, onFieldCha
 
         {/* Characters */}
         <div className="col-span-2">
-          <label className="text-[10px] text-zinc-500 block mb-0.5 font-medium">人物</label>
+          <label className="text-[10px] text-gray-500 block mb-0.5 font-medium">人物</label>
           <input
             type="text"
             value={scene.characters?.join("、") ?? ""}
             onChange={(e) => handleChange("characters", e.target.value.split("、").filter(Boolean) as any)}
             placeholder="用顿号分隔多个角色"
-            className="w-full bg-zinc-800/40 border border-white/[0.06] rounded-lg px-2.5 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-500/40 focus:bg-zinc-800/60 transition-colors"
+            className="w-full bg-gray-700/40 border border-gray-700 rounded-lg px-2.5 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-500/40 focus:bg-gray-700/60 transition-colors"
           />
         </div>
       </div>
 
       {/* Actions */}
-      <div className="flex gap-1 pt-2 border-t border-white/[0.06]">
+      <div className="flex gap-1 pt-2 border-t border-gray-700">
         <button
           onClick={() => onMove(scene.id, "up")}
           disabled={index === 0}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-2 py-1 text-[10px] font-medium text-zinc-500 transition-all hover:bg-white/[0.04] hover:text-zinc-300 disabled:opacity-30 disabled:pointer-events-none"
+          className="inline-flex items-center gap-1 rounded-lg border border-gray-700 px-2 py-1 text-[10px] font-medium text-gray-500 transition-all hover:bg-gray-700 hover:text-gray-300 disabled:opacity-30 disabled:pointer-events-none"
         >
           <ChevronUp className="h-3 w-3" />
           上移
@@ -99,7 +99,7 @@ export default function ScriptSegmentCard({ scene, index, totalCount, onFieldCha
         <button
           onClick={() => onMove(scene.id, "down")}
           disabled={index === totalCount - 1}
-          className="inline-flex items-center gap-1 rounded-lg border border-white/[0.06] px-2 py-1 text-[10px] font-medium text-zinc-500 transition-all hover:bg-white/[0.04] hover:text-zinc-300 disabled:opacity-30 disabled:pointer-events-none"
+          className="inline-flex items-center gap-1 rounded-lg border border-gray-700 px-2 py-1 text-[10px] font-medium text-gray-500 transition-all hover:bg-gray-700 hover:text-gray-300 disabled:opacity-30 disabled:pointer-events-none"
         >
           <ChevronDown className="h-3 w-3" />
           下移

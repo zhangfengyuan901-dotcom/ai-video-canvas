@@ -15,16 +15,16 @@ interface FlowStepNavProps {
 }
 
 const dotColors: Record<StepStatus, string> = {
-  inactive: "bg-zinc-700",
+  inactive: "bg-gray-600",
   active: "bg-blue-500 shadow-sm shadow-blue-500/40",
   completed: "bg-emerald-500",
   error: "bg-rose-500",
 };
 
 const labelColors: Record<StepStatus, string> = {
-  inactive: "text-zinc-600",
-  active: "text-zinc-200",
-  completed: "text-zinc-300",
+  inactive: "text-gray-500",
+  active: "text-gray-200",
+  completed: "text-gray-300",
   error: "text-rose-300",
 };
 
@@ -67,7 +67,7 @@ export default function FlowStepNav({ steps, className }: FlowStepNavProps) {
                   "mx-2 h-px w-6 transition-colors duration-300",
                   step.status === "completed"
                     ? "bg-emerald-500/40"
-                    : "bg-zinc-700/60",
+                    : "bg-gray-600",
                 )}
               />
             )}

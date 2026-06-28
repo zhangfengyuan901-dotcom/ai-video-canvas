@@ -141,7 +141,7 @@ export default function ScriptPreviewPanel() {
           <div className="flex gap-2">
             <button
               onClick={handleAddSegment}
-              className="inline-flex items-center gap-1 rounded-lg border border-white/[0.08] bg-white/[0.03] px-2.5 py-1.5 text-[11px] font-medium text-zinc-400 transition-all hover:bg-white/[0.06] hover:text-zinc-300"
+              className="inline-flex items-center gap-1 rounded-lg border border-gray-600 bg-gray-800/80 px-2.5 py-1.5 text-[11px] font-medium text-gray-400 transition-all hover:bg-gray-700 hover:text-gray-300"
             >
               <Plus className="h-3 w-3" />
               添加段落
@@ -173,7 +173,7 @@ export default function ScriptPreviewPanel() {
 
       {/* Scene segments */}
       {scenes.length === 0 ? (
-        <div className="text-xs text-zinc-500 py-4 text-center">
+        <div className="text-xs text-gray-500 py-4 text-center">
           暂无脚本段落，请先在「脚本输入」区创建脚本
         </div>
       ) : (

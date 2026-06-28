@@ -90,7 +90,7 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div
-        className="w-[740px] max-h-[85vh] rounded-2xl border border-white/[0.08] bg-[#08090c] shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
+        className="w-[740px] max-h-[85vh] rounded-2xl border border-gray-600 bg-gray-900 shadow-2xl shadow-black/50 flex flex-col overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {children}
@@ -102,10 +102,10 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
     return modalContent(
       <div className="flex flex-col items-center justify-center py-16 gap-4">
         <div className="relative h-8 w-8">
-          <div className="absolute inset-0 rounded-full border-2 border-white/[0.06]" />
+          <div className="absolute inset-0 rounded-full border-2 border-gray-700" />
           <div className="absolute inset-0 rounded-full border-2 border-t-blue-500 animate-spin" />
         </div>
-        <p className="text-sm text-zinc-400">正在加载预检信息...</p>
+        <p className="text-sm text-gray-400">正在加载预检信息...</p>
       </div>
     );
   }
@@ -118,7 +118,7 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
         </div>
         <p className="text-sm text-rose-400">{error}</p>
         <button onClick={onClose}
-          className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-medium text-zinc-300 transition-all hover:bg-white/[0.08]">
+          className="rounded-xl border border-gray-600 bg-gray-700 px-4 py-2 text-xs font-medium text-gray-300 transition-all hover:bg-gray-600">
           关闭
         </button>
       </div>
@@ -138,18 +138,18 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
   return modalContent(
     <>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-white/[0.06] shrink-0">
+      <div className="px-6 py-4 border-b border-gray-700 shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-violet-600 shadow-sm">
               <Download className="h-4.5 w-4.5 text-white" />
             </div>
             <div>
-              <h2 className="text-sm font-semibold text-zinc-100">导出前检查</h2>
-              <p className="text-[11px] text-zinc-500 mt-0.5">确认每个镜头都有可用视频，导出将使用当前版本</p>
+              <h2 className="text-sm font-semibold text-gray-100">导出前检查</h2>
+              <p className="text-[11px] text-gray-500 mt-0.5">确认每个镜头都有可用视频，导出将使用当前版本</p>
             </div>
           </div>
-          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.06] transition-all">
+          <button onClick={onClose} className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-700 transition-all">
             <X className="h-4 w-4" />
           </button>
         </div>
@@ -188,8 +188,8 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
             {preflight!.missingScenes.map(function(item) {
               return (
                 <div key={item.sceneId} className="flex items-center gap-3 rounded-xl border border-rose-500/15 bg-rose-500/[0.04] px-4 py-2.5">
-                  <span className="text-xs text-zinc-500 font-mono w-8 shrink-0">#{item.order}</span>
-                  <span className="text-xs text-zinc-300 truncate flex-1">{item.title}</span>
+                  <span className="text-xs text-gray-500 font-mono w-8 shrink-0">#{item.order}</span>
+                  <span className="text-xs text-gray-300 truncate flex-1">{item.title}</span>
                   <span className="text-[10px] text-rose-400 shrink-0">{item.reason}</span>
                 </div>
               );
@@ -203,9 +203,9 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
             {preflight!.unapprovedVideoScenes.map(function(item) {
               return (
                 <div key={item.sceneId} className="flex items-center gap-3 rounded-xl border border-amber-500/15 bg-amber-500/[0.04] px-4 py-2.5">
-                  <span className="text-xs text-zinc-500 font-mono w-8 shrink-0">#{item.order}</span>
-                  <span className="text-xs text-zinc-300 truncate flex-1">{item.title}</span>
-                  {item.version && <span className="text-[10px] text-zinc-500">v{item.version}</span>}
+                  <span className="text-xs text-gray-500 font-mono w-8 shrink-0">#{item.order}</span>
+                  <span className="text-xs text-gray-300 truncate flex-1">{item.title}</span>
+                  {item.version && <span className="text-[10px] text-gray-500">v{item.version}</span>}
                   <span className="text-[10px] text-amber-400">未审核</span>
                 </div>
               );
@@ -219,9 +219,9 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
             {preflight!.usingFallbackClips.map(function(item) {
               return (
                 <div key={item.sceneId + "-fb"} className="flex items-center gap-3 rounded-xl border border-blue-500/15 bg-blue-500/[0.04] px-4 py-2.5">
-                  <span className="text-xs text-zinc-500 font-mono w-8 shrink-0">#{item.order}</span>
-                  <span className="text-xs text-zinc-300 truncate flex-1">{item.title}</span>
-                  <span className="text-[10px] text-zinc-500">v{item.version}</span>
+                  <span className="text-xs text-gray-500 font-mono w-8 shrink-0">#{item.order}</span>
+                  <span className="text-xs text-gray-300 truncate flex-1">{item.title}</span>
+                  <span className="text-[10px] text-gray-500">v{item.version}</span>
                   <span className="text-[10px] text-blue-300 truncate max-w-[200px]">{item.reason}</span>
                 </div>
               );
@@ -234,11 +234,11 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
           <Section title={`可导出镜头 (${preflight!.exportItems.length})`} icon={<Film className="h-3 w-3 text-emerald-400" />}>
             {preflight!.exportItems.map(function(item) {
               return (
-                <div key={item.sceneId + "-exp"} className="flex items-center gap-3 rounded-xl border border-white/[0.04] bg-white/[0.02] px-4 py-2.5 hover:bg-white/[0.03] transition-colors">
-                  <span className="text-xs text-zinc-500 font-mono w-8 shrink-0">#{item.order}</span>
-                  <span className="text-xs text-zinc-300 truncate flex-1">{item.title}</span>
-                  <span className="text-[10px] text-zinc-500 shrink-0 flex items-center gap-1.5">
-                    <span className="rounded-md border border-white/[0.06] px-1.5 py-0.5">v{item.version}</span>
+                <div key={item.sceneId + "-exp"} className="flex items-center gap-3 rounded-xl border border-gray-700 bg-gray-800 px-4 py-2.5 hover:bg-gray-800/80 transition-colors">
+                  <span className="text-xs text-gray-500 font-mono w-8 shrink-0">#{item.order}</span>
+                  <span className="text-xs text-gray-300 truncate flex-1">{item.title}</span>
+                  <span className="text-[10px] text-gray-500 shrink-0 flex items-center gap-1.5">
+                    <span className="rounded-md border border-gray-700 px-1.5 py-0.5">v{item.version}</span>
                     <span>{item.duration}s</span>
                     {item.approved ? (
                       <span className="text-emerald-400">已审</span>
@@ -248,7 +248,7 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
                     {item.isCurrent ? (
                       <span className="text-blue-400">当前</span>
                     ) : (
-                      <span className="text-zinc-600">非当前</span>
+                      <span className="text-gray-500">非当前</span>
                     )}
                   </span>
                 </div>
@@ -259,14 +259,14 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
 
         {preflight!.exportItems.length === 0 && totalCount > 0 && (
           <div className="flex flex-col items-center justify-center py-8 gap-2">
-            <Film className="h-8 w-8 text-zinc-600" />
-            <p className="text-xs text-zinc-500">没有可导出的视频片段</p>
+            <Film className="h-8 w-8 text-gray-500" />
+            <p className="text-xs text-gray-500">没有可导出的视频片段</p>
           </div>
         )}
       </div>
 
       {/* Footer */}
-      <div className="border-t border-white/[0.06] px-6 py-4 flex items-center gap-3 shrink-0">
+      <div className="border-t border-gray-700 px-6 py-4 flex items-center gap-3 shrink-0">
         <div className="flex-1">
           {canExport && (
             <p className="text-[11px] text-emerald-400/80">全部镜头视频已审核通过，将按当前版本导出完整视频。</p>
@@ -276,7 +276,7 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
               {canPartialExport && (
                 <p className="text-[11px] text-amber-400 font-medium">⚠ 部分镜头不可用，导出视频将不完整</p>
               )}
-              <p className="text-[11px] text-zinc-500">
+              <p className="text-[11px] text-gray-500">
                 {missingCount > 0 && `还有 ${missingCount} 个镜头没有可用视频。`}
                 {unapprovedCount > 0 && `有 ${unapprovedCount} 个镜头视频未审核。`}
                 {canPartialExport && "你也可以选择部分导出，只导出已完成的视频片段。"}
@@ -285,7 +285,7 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
           )}
         </div>
 
-        <button onClick={onClose} className="rounded-xl border border-white/[0.08] bg-white/[0.04] px-4 py-2 text-xs font-medium text-zinc-300 transition-all hover:bg-white/[0.08]">
+        <button onClick={onClose} className="rounded-xl border border-gray-600 bg-gray-700 px-4 py-2 text-xs font-medium text-gray-300 transition-all hover:bg-gray-600">
           取消
         </button>
 
@@ -312,9 +312,9 @@ export default function ExportPreflightModal({ projectId, onClose, onConfirm }: 
 
 function MiniStat({ label, value, accent, warn }: { label: string; value: string; accent?: boolean; warn?: boolean }) {
   return (
-    <div className="rounded-xl border border-white/[0.04] bg-white/[0.02] p-2.5">
-      <div className="text-[10px] text-zinc-500 mb-0.5">{label}</div>
-      <div className={`text-sm font-semibold tracking-tight ${warn ? "text-amber-400" : accent ? "text-emerald-400" : "text-zinc-100"}`}>
+    <div className="rounded-xl border border-gray-700 bg-gray-800 p-2.5">
+      <div className="text-[10px] text-gray-500 mb-0.5">{label}</div>
+      <div className={`text-sm font-semibold tracking-tight ${warn ? "text-amber-400" : accent ? "text-emerald-400" : "text-gray-100"}`}>
         {value}
       </div>
     </div>
@@ -326,7 +326,7 @@ function Section({ title, icon, children }: { title: string; icon: React.ReactNo
     <div>
       <div className="flex items-center gap-1.5 mb-2">
         {icon}
-        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500">{title}</p>
+        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500">{title}</p>
       </div>
       <div className="space-y-1.5">
         {children}

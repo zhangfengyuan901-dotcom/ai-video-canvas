@@ -89,13 +89,13 @@ export default function TimelineItem({
         ${
           isSelected
             ? "border-blue-500/50 bg-blue-500/[0.06] shadow-sm shadow-blue-500/10"
-            : "border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12] hover:bg-white/[0.04]"
+            : "border-gray-700 bg-gray-800 hover:border-gray-500 hover:bg-gray-700"
         }
         ${isDragOver ? "border-l-blue-400 border-l-2 ring-1 ring-blue-500/30" : ""}
       `}
     >
       {/* Thumbnail area */}
-      <div className="flex-1 relative overflow-hidden bg-zinc-900/60">
+      <div className="flex-1 relative overflow-hidden bg-gray-800/60">
         {type === "storyboard" ? (
           thumbnailUrl ? (
             <img
@@ -108,9 +108,9 @@ export default function TimelineItem({
           ) : (
             <div className="h-full w-full flex items-center justify-center">
               <div className="flex gap-0.5 opacity-30">
-                <div className="w-5 h-7 rounded border border-zinc-600/60 bg-zinc-800" />
-                <div className="w-5 h-7 rounded border border-zinc-600/60 bg-zinc-700/60" />
-                <div className="w-5 h-7 rounded border border-zinc-600/60 bg-zinc-800" />
+                <div className="w-5 h-7 rounded border border-gray-600/60 bg-gray-700" />
+                <div className="w-5 h-7 rounded border border-gray-600/60 bg-gray-600/60" />
+                <div className="w-5 h-7 rounded border border-gray-600/60 bg-gray-700" />
               </div>
             </div>
           )
@@ -140,7 +140,7 @@ export default function TimelineItem({
               </svg>
             </div>
             <div className="absolute bottom-1 right-1">
-              <span className="text-[9px] bg-black/60 text-zinc-300 px-1 py-0.5 rounded leading-none backdrop-blur-sm">
+              <span className="text-[9px] bg-black/60 text-gray-300 px-1 py-0.5 rounded leading-none backdrop-blur-sm">
                 {clip.duration}s
               </span>
             </div>
@@ -152,10 +152,10 @@ export default function TimelineItem({
           </div>
         ) : clip && clip.status === "queued" ? (
           <div className="h-full w-full flex flex-col items-center justify-center gap-1">
-            <svg className="w-5 h-5 text-zinc-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5 text-gray-500 animate-pulse" fill="currentColor" viewBox="0 0 24 24">
               <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z" />
             </svg>
-            <span className="text-[10px] text-zinc-500">排队中</span>
+            <span className="text-[10px] text-gray-500">排队中</span>
           </div>
         ) : clip && clip.status === "failed" ? (
           <div className="h-full w-full flex flex-col items-center justify-center gap-1 p-2">
@@ -168,12 +168,12 @@ export default function TimelineItem({
           </div>
         ) : (
           <div className="h-full w-full flex flex-col items-center justify-center gap-1">
-            <svg className="w-7 h-7 text-zinc-600" fill="currentColor" viewBox="0 0 24 24">
+            <svg className="w-7 h-7 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
             <button
               onClick={handleGenerateClick}
-              className="text-[9px] bg-white/[0.06] hover:bg-white/[0.10] text-zinc-400 px-2 py-0.5 rounded transition-colors"
+              className="text-[9px] bg-gray-700 hover:bg-gray-600 text-gray-400 px-2 py-0.5 rounded transition-colors"
             >
               生成
             </button>
@@ -182,15 +182,15 @@ export default function TimelineItem({
 
         {/* Scene number badge */}
         <div className="absolute top-1 left-1">
-          <span className="text-[10px] font-mono bg-black/60 text-zinc-300 px-1.5 py-0.5 rounded leading-none backdrop-blur-sm">
+          <span className="text-[10px] font-mono bg-black/60 text-gray-300 px-1.5 py-0.5 rounded leading-none backdrop-blur-sm">
             #{scene.order}
           </span>
         </div>
       </div>
 
       {/* Label */}
-      <div className="h-7 px-2 flex items-center truncate border-t border-white/[0.06]">
-        <span className="text-[11px] text-zinc-400 truncate leading-none">
+      <div className="h-7 px-2 flex items-center truncate border-t border-gray-700">
+        <span className="text-[11px] text-gray-400 truncate leading-none">
           {scene.title || `Scene ${scene.order}`}
         </span>
         {/* Version indicator for video clips */}
@@ -198,7 +198,7 @@ export default function TimelineItem({
           <button
             onClick={handleVersionSwitch}
             title="点击切换版本"
-            className="ml-1 text-[9px] bg-white/[0.06] hover:bg-white/[0.10] text-zinc-400 px-1 rounded shrink-0 leading-none py-0.5 transition-colors"
+            className="ml-1 text-[9px] bg-gray-700 hover:bg-gray-600 text-gray-400 px-1 rounded shrink-0 leading-none py-0.5 transition-colors"
           >
             v{clip.version}/{allClips.length}
           </button>
@@ -212,7 +212,7 @@ export default function TimelineItem({
                   ? "text-rose-400"
                   : clip.status === "running"
                     ? "text-blue-400"
-                    : "text-zinc-500"
+                    : "text-gray-500"
             }`}
           >
             {clip.status === "ready"

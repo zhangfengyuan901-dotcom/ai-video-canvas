@@ -19,16 +19,16 @@ export default function SectionHeader({
   return (
     <div className={cn("flex items-center justify-between gap-3", className)}>
       <div className="min-w-0 flex-1">
-        <h3 className="text-sm font-medium text-zinc-100 tracking-wide">
+        <h3 className="text-sm font-medium text-gray-100 tracking-wide">
           {title}
           {count !== undefined && (
-            <span className="ml-1.5 text-sm font-normal text-zinc-500">
+            <span className="ml-1.5 text-sm font-normal text-gray-500">
               · {count}
             </span>
           )}
         </h3>
         {subtitle && (
-          <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{subtitle}</p>
+          <p className="text-[11px] text-gray-500 mt-0.5 truncate">{subtitle}</p>
         )}
       </div>
       {action && <div className="shrink-0">{action}</div>}

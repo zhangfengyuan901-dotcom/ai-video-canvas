@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="color-scheme" content="dark">
+<title>AI 视频画布 — H5 测试工具</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#08090c;--card:#12141a;--border:rgba(255,255,255,.08);--text:#e4e4e7;--muted:#71717a;--accent:#3b82f6;--accent2:#8b5cf6;--green:#34d399;--amber:#f59e0b;--rose:#f43f5e;--radius:12px;--safe:env(safe-area-inset-bottom,16px)}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;padding:0 0 var(--safe);-webkit-font-smoothing:antialiased}
+.app{padding:0 0 80px}
+/* Header */
+.hd{position:sticky;top:0;z-index:50;background:rgba(8,9,12,.85);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:12px 16px}
+.hd-inner{display:flex;align-items:center;gap:10px;max-width:600px;margin:0 auto}
+.hd-logo{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#3b82f6,#8b5cf6);display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.hd h1{font-size:15px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hd .badge{font-size:10px;padding:2px 8px;border-radius:6px;background:rgba(59,130,246,.15);color:var(--accent);border:1px solid rgba(59,130,246,.2)}
+/* Project bar */
+.pbar{background:rgba(255,255,255,.02);border-bottom:1px solid var(--border);padding:10px 16px;position:sticky;top:52px;z-index:40;backdrop-filter:blur(8px)}
+.pbar-inner{max-width:600px;margin:0 auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.pbar select{flex:1;min-width:120px;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 10px;color:var(--text);font-size:12px;appearance:none;-webkit-appearance:none;cursor:pointer}
+.pbar .pid{font-size:10px;color:var(--muted);padding:4px 8px;background:rgba(255,255,255,.03);border-radius:6px;border:1px solid var(--border);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pbar .pid.empty{color:var(--muted);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08);color:var(--amber)}
+.pbar label{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px}
+/* Steps nav */
+.steps{display:flex;gap:0;padding:12px 16px 4px;overflow-x:auto;max-width:600px;margin:0 auto;-webkit-overflow-scrolling:touch}
+.steps::-webkit-scrollbar{display:none}
+.step-item{display:flex;align-items:center;flex-shrink:0}
+.step-dot{width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0;transition:.2s}
+.step-dot.done{background:var(--green);color:#000}
+.step-dot.active{background:var(--accent);color:#fff;box-shadow:0 0 8px rgba(59,130,246,.4)}
+.step-dot.wait{background:rgba(255,255,255,.06);color:var(--muted);border:1px solid var(--border)}
+.step-label{font-size:9px;margin-left:4px;white-space:nowrap;transition:.2s}
+.step-label.done{color:var(--green)}
+.step-label.active{color:var(--text)}
+.step-label.wait{color:var(--muted)}
+.step-line{width:16px;height:1px;background:var(--border);margin:0 4px}
+.step-line.done{background:rgba(52,211,153,.3)}
+/* Content */
+.content{max-width:600px;margin:8px auto;padding:0 12px}
+/* Step card */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);margin-bottom:12px;overflow:hidden;transition:.2s}
+.card-header{display:flex;align-items:center;gap:10px;padding:12px 14px;cursor:pointer;-webkit-tap-highlight-color:transparent;user-select:none}
+.card-header:active{background:rgba(255,255,255,.02)}
+.card-num{width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.card-num.done{background:rgba(52,211,153,.15);color:var(--green)}
+.card-num.active{background:rgba(59,130,246,.15);color:var(--accent)}
+.card-num.wait{background:rgba(255,255,255,.04);color:var(--muted)}
+.card-header h3{font-size:13px;font-weight:600;flex:1}
+.card-status{font-size:10px;padding:2px 8px;border-radius:6px}
+.card-status.done{background:rgba(52,211,153,.1);color:var(--green)}
+.card-status.running{background:rgba(59,130,246,.1);color:var(--accent)}
+.card-status.fail{background:rgba(244,63,94,.1);color:var(--rose)}
+.card-status.wait{background:rgba(255,255,255,.04);color:var(--muted)}
+.card-arrow{font-size:16px;color:var(--muted);transition:.25s;flex-shrink:0}
+.card.open .card-arrow{transform:rotate(180deg)}
+.card-body{padding:0 14px 14px;display:none}
+.card.open .card-body{display:block}
+/* Form */
+.fgroup{margin-bottom:10px}
+.fgroup label{display:block;font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:500}
+.fgroup input,.fgroup textarea,.fgroup select{width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:13px;transition:.15s;outline:0;font-family:inherit}
+.fgroup input:focus,.fgroup textarea:focus,.fgroup select:focus{border-color:var(--accent)}
+.fgroup textarea{resize:vertical;min-height:60px;font-size:12px}
+.fgroup .hint{font-size:10px;color:var(--muted);margin-top:3px}
+/* File upload */
+.fupload{position:relative;display:flex;gap:6px;flex-wrap:wrap}
+.fupload-btn{display:inline-flex;align-items:center;gap:4px;padding:6px 12px;border-radius:8px;border:1px dashed var(--border);background:rgba(255,255,255,.02);color:var(--muted);font-size:11px;cursor:pointer;transition:.15s}
+.fupload-btn:active{background:rgba(255,255,255,.04)}
+.fupload-btn.has{background:rgba(52,211,153,.06);border-color:rgba(52,211,153,.3);color:var(--green)}
+.fupload-btn input{position:absolute;opacity:0;pointer-events:none}
+.fupload-preview{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.fupload-preview img{width:48px;height:48px;border-radius:8px;object-fit:cover;border:1px solid var(--border)}
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:8px 16px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:.15s;-webkit-tap-highlight-color:transparent;width:100%}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;pointer-events:none}
+.btn-primary{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,.25)}
+.btn-primary:active{box-shadow:0 1px 4px rgba(59,130,246,.2)}
+.btn-secondary{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border)}
+.btn-success{background:linear-gradient(135deg,#34d399,#10b981);color:#000;box-shadow:0 2px 8px rgba(52,211,153,.2)}
+.btn-amber{background:linear-gradient(135deg,#f59e0b,#d97706);color:#000;box-shadow:0 2px 8px rgba(245,158,11,.2)}
+.btn-rose{background:linear-gradient(135deg,#f43f5e,#e11d48);color:#fff;box-shadow:0 2px 8px rgba(244,63,94,.2)}
+.btn-group{display:flex;gap:6px;margin-top:8px}
+.btn-group .btn{flex:1}
+.btn-sm{padding:5px 10px;font-size:11px;width:auto}
+/* Response */
+.resp{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:8px;font-size:11px;font-family:"SF Mono","Fira Code","Cascadia Code",monospace;overflow:auto;max-height:200px;white-space:pre-wrap;word-break:break-all;color:var(--muted);line-height:1.5}
+.resp.success{border-color:rgba(52,211,153,.2);color:var(--green)}
+.resp.error{border-color:rgba(244,63,94,.2);color:var(--rose)}
+.resp.loading{color:var(--accent);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.resp .label{color:var(--muted)}
+.resp .val{color:var(--text)}
+/* Toast */
+.toast{position:fixed;bottom:calc(16px + var(--safe));left:50%;transform:translateX(-50%);z-index:999;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:12px;color:var(--text);box-shadow:0 8px 32px rgba(0,0,0,.5);transition:.3s;opacity:0;pointer-events:none;max-width:90vw;text-align:center}
+.toast.show{opacity:1}
+.toast.success{border-color:rgba(52,211,153,.3);color:var(--green)}
+.toast.error{border-color:rgba(244,63,94,.3);color:var(--rose)}
+/* misc */
+.tag{display:inline-block;font-size:9px;padding:1px 6px;border-radius:4px;background:rgba(255,255,255,.04);color:var(--muted);margin:2px;border:1px solid var(--border)}
+.flex{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mt-1{margin-top:6px}
+.mt-2{margin-top:10px}
+.mb-1{margin-bottom:6px}
+.gap-1{gap:4px}
+.gap-2{gap:8px}
+.w-full{width:100%}
+.truncate{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.text-muted{color:var(--muted)}
+.text-xs{font-size:10px}
+.text-green{color:var(--green)}
+.text-amber{color:var(--amber)}
+.text-rose{color:var(--rose)}
+/* load more */
+.expand-link{font-size:11px;color:var(--accent);cursor:pointer;display:inline-block;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Header -->
+  <div class="hd">
+    <div class="hd-inner">
+      <div class="hd-logo">🎬</div>
+      <h1>AI 视频画布 · 测试</h1>
+      <span class="badge">H5</span>
+    </div>
+  </div>
+
+  <!-- Project bar -->
+  <div class="pbar" id="projectBar">
+    <div class="pbar-inner">
+      <label>项目</label>
+      <select id="projectSelect" onchange="onProjectChange(this.value)">
+        <option value="">— 加载中 —</option>
+      </select>
+      <span class="pid empty" id="currentProjectId">未选择</span>
+    </div>
+  </div>
+
+  <!-- Steps indicator -->
+  <div class="steps" id="stepsIndicator"></div>
+
+  <!-- Content -->
+  <div class="content" id="appContent"></div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// =========================================================================
+// State
+// =========================================================================
+const API = "/api";
+let STATE = { projects: [], currentProject: null, scenes: [], panels: {}, clips: {}, refs: [] };
+let REFS_UPLOADED = {};
+
+const STEPS = [
+  { id:"project", label:"创建项目" },
+  { id:"script_input", label:"输入脚本" },
+  { id:"script_preview", label:"编辑脚本" },
+  { id:"storyboard", label:"故事板" },
+  { id:"video", label:"生成视频" },
+  { id:"export", label:"导出" },
+];
+
+// =========================================================================
+// API Helper
+// =========================================================================
+async function api(path, opts = {}) {
+  const url = path.startsWith("http") ? path : API + path;
+  const res = await fetch(url, {
+    headers: opts.body instanceof FormData ? {} : { "Content-Type": "application/json", ...opts.headers },
+    ...opts,
+  });
+  if (!res.ok) {
+    let msg = `HTTP ${res.status}`;
+    try { const j = await res.json(); msg = j.error || j.message || msg; } catch {}
+    throw new Error(msg);
+  }
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("application/json")) return res.json();
+  const text = await res.text();
+  try { return JSON.parse(text); } catch { return text; }
+}
+
+// =========================================================================
+// UI Helpers
+// =========================================================================
+function q(s) { return document.querySelector(s); }
+function qa(s) { return document.querySelectorAll(s); }
+function el(tag, attrs = {}, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "className") e.className = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2).toLowerCase(), v);
+    else if (k === "style" && typeof v === "object") Object.assign(e.style, v);
+    else e.setAttribute(k, v);
+  }
+  for (const kid of kids) { if (kid != null) e.append(typeof kid === "string" ? document.createTextNode(kid) : kid); }
+  return e;
+}
+
+function showToast(msg, type = "") {
+  const t = q("#toast");
+  t.textContent = msg;
+  t.className = "toast show " + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove("show"), 2500);
+}
+
+function renderSteps() {
+  const container = q("#stepsIndicator");
+  container.innerHTML = "";
+  STEPS.forEach((s, i) => {
+    const item = el("div", { className: "step-item" });
+    let status = "wait";
+    const index = STEPS.indexOf(s);
+    const currentIdx = getCurrentStepIndex();
+    if (index < currentIdx) status = "done";
+    else if (index === currentIdx) status = "active";
+    const dot = el("div", { className: "step-dot " + status }, status === "done" ? "✓" : status === "active" ? "●" : "");
+    const label = el("span", { className: "step-label " + status }, s.label);
+    item.append(dot, label);
+    if (i < STEPS.length - 1) {
+      item.append(el("div", { className: "step-line " + status }));
+    }
+    container.append(item);
+  });
+}
+
+function getCurrentStepIndex() {
+  if (!STATE.currentProject) return 0;
+  if (STATE.scenes.length === 0) return 1;
+  // Script exists, check storyboard
+  const hasSb = STATE.scenes.some(s => s.storyboardReviewStatus === "approved" || s.status === "storyboard_ready" || s.status === "video_ready");
+  if (!hasSb) return 2;
+  const hasVideo = STATE.scenes.some(s => s.status === "video_ready");
+  if (!hasVideo) return 3;
+  const allVidReady = STATE.scenes.every(s => {
+    const clips = STATE.clips[s.id] || [];
+    return clips.some(c => c.status === "ready");
+  });
+  if (!allVidReady) return 4;
+  return 5;
+}
+
+// =========================================================================
+// Project Management
+// =========================================================================
+async function loadProjects() {
+  try {
+    STATE.projects = await api("/projects");
+    const sel = q("#projectSelect");
+    sel.innerHTML = "<option value=\"\">— 选择项目 —</option>";
+    STATE.projects.forEach(p => {
+      const opt = el("option", { value: p.id }, p.title + (p.aspectRatio ? ` (${p.aspectRatio})` : ""));
+      sel.append(opt);
+    });
+    if (STATE.projects.length === 0) {
+      sel.innerHTML = "<option value=\"\">— 暂无项目，请先创建 —</option>";
+    }
+  } catch (e) {
+    console.error("loadProjects:", e);
+    q("#projectSelect").innerHTML = "<option value=\"\">⚠ 无法加载项目</option>";
+  }
+}
+
+async function onProjectChange(id) {
+  if (!id) { STATE.currentProject = null; STATE.scenes = []; updateUI(); return; }
+  const p = STATE.projects.find(x => x.id === id);
+  if (!p) { STATE.currentProject = null; updateUI(); return; }
+  STATE.currentProject = p;
+  const pid = q("#currentProjectId");
+  pid.textContent = p.id.slice(0, 12) + "...";
+  pid.className = "pid";
+  await loadScenes();
+}
+
+async function handleCreateProject() {
+  const title = q("#inputProjectTitle").value.trim();
+  if (!title) { showToast("请输入项目名称", "error"); return; }
+  const aspect = q("#inputAspectRatio").value;
+  const res = q("#inputResolution").value;
+  try {
+    const p = await api("/projects", { method: "POST", body: JSON.stringify({ title, aspectRatio: aspect, resolution: res }) });
+    STATE.projects.push(p);
+    STATE.currentProject = p;
+    await loadProjects();
+    q("#projectSelect").value = p.id;
+    onProjectChange(p.id);
+    showToast(`项目「${p.title}」创建成功`, "success");
+    q("#inputProjectTitle").value = "";
+  } catch (e) {
+    showToast("创建失败: " + e.message, "error");
+  }
+}
+
+// =========================================================================
+// Scenes
+// =========================================================================
+async function loadScenes() {
+  if (!STATE.currentProject) return;
+  try {
+    STATE.scenes = await api(`/projects/${STATE.currentProject.id}/scenes`);
+    // Load panels & clips for each scene
+    await Promise.all(STATE.scenes.map(async s => {
+      try { STATE.panels[s.id] = await api(`/projects/${STATE.currentProject.id}/scenes/${s.id}/panels`); } catch {}
+    }));
+  } catch (e) { console.error("loadScenes:", e); }
+  updateUI();
+}
+
+// =========================================================================
+// Reference Assets
+// =========================================================================
+async function loadRefs() {
+  if (!STATE.currentProject) return;
+  try { STATE.refs = await api(`/projects/${STATE.currentProject.id}/reference-assets`); } catch {}
+}
+
+// =========================================================================
+// Step Card Builder
+// =========================================================================
+function stepCard(num, title, status, builder) {
+  const card = el("div", { className: "card open" });
+  const hdr = el("div", { className: "card-header", onClick: () => card.classList.toggle("open") });
+  const numEl = el("div", { className: "card-num " + status }, String(num));
+  const h3 = el("h3", {}, title);
+  const stEl = el("span", { className: "card-status " + status },
+    status === "done" ? "✓ 完成" : status === "running" ? "⋯ 进行中" : status === "fail" ? "✗ 失败" : "○ 待操作");
+  const arrow = el("span", { className: "card-arrow" }, "▾");
+  hdr.append(numEl, h3, stEl, arrow);
+  const body = el("div", { className: "card-body" });
+  if (builder) builder(body);
+  card.append(hdr, body);
+  return card;
+}
+
+function addResp(container, data) {
+  const pre = el("pre", { className: "resp" });
+  pre.textContent = typeof data === "string" ? data : JSON.stringify(data, null, 2);
+  container.append(pre);
+  return pre;
+}
+
+// =========================================================================
+// Main UI Render
+// =========================================================================
+function updateUI() {
+  renderSteps();
+  const c = q("#appContent");
+  c.innerHTML = "";
+
+  if (!STATE.currentProject) {
+    c.append(buildProjectStep());
+    c.append(buildNoProjectInfo());
+    return;
+  }
+
+  // All steps
+  c.append(buildProjectStep());
+  c.append(buildScriptInputStep());
+  c.append(buildScriptPreviewStep());
+  c.append(buildStoryboardStep());
+  c.append(buildVideoStep());
+  c.append(buildExportStep());
+  c.append(buildProjectInfo());
+}
+
+// =========================================================================
+// Step 0: Project
+// =========================================================================
+function buildProjectStep() {
+  const done = !!STATE.currentProject;
+  return stepCard(0, "创建 / 选择项目", done ? "done" : "active", (body) => {
+    // Create form
+    const fg1 = el("div", { className: "fgroup" });
+    fg1.append(el("label", {}, "项目名称"));
+    const inp = el("input", { id: "inputProjectTitle", type: "text", placeholder: "例如：我的视频" });
+    fg1.append(inp);
+    body.append(fg1);
+
+    const fg2 = el("div", { className: "fgroup" });
+    fg2.append(el("label", {}, "参数"));
+    const row = el("div", { className: "flex gap-2" });
+    const selA = el("select", { id: "inputAspectRatio", style: { flex: 1 } });
+    ["16:9","9:16"].forEach(v => selA.append(el("option", { value: v }, v)));
+    const selR = el("select", { id: "inputResolution", style: { flex: 1 } });
+    ["720p","1080p","4k"].forEach(v => selR.append(el("option", { value: v }, v)));
+    row.append(selA, selR);
+    fg2.append(row);
+    body.append(fg2);
+
+    const btn = el("button", { className: "btn btn-primary", onClick: handleCreateProject }, "✨ 创建项目");
+    body.append(btn);
+
+    if (STATE.currentProject) {
+      body.append(el("div", { className: "resp success mt-1" },
+        "当前项目: " + STATE.currentProject.title + " (" + STATE.currentProject.aspectRatio + " · " + STATE.currentProject.resolution + ")"
+      ));
+    }
+  });
+}
+
+// =========================================================================
+// Step 1: Script Input
+// =========================================================================
+function buildScriptInputStep() {
+  const hasScript = STATE.scenes.length > 0;
+  return stepCard(1, "输入脚本 + 参考图", hasScript ? "done" : "active", (body) => {
+    const fg = el("div", { className: "fgroup" });
+    fg.append(el("label", {}, "创意描述 / 完整脚本"));
+    const ta = el("textarea", { id: "inputScriptText", placeholder: "例如：一个关于都市夜景的短视频，开篇俯瞰城市天际线..." });
+    ta.value = "一个 15 秒的咖啡品牌广告短视频，展示从咖啡豆研磨到冲泡完成的全过程，温暖氛围，慢节奏。";
+    fg.append(ta);
+    body.append(fg);
+
+    // Reference upload
+    const refLabel = el("label", { className: "text-xs text-muted mb-1", style: { display: "block" } }, "参考图（可选）");
+    body.append(refLabel);
+    const uploadRow = el("div", { className: "fupload" });
+    ["character","scene","product","first_frame"].forEach(type => {
+      const names = { character:"人物", scene:"场景", product:"产品", first_frame:"首帧" };
+      const has = REFS_UPLOADED[type];
+      const lbl = el("label", { className: "fupload-btn" + (has ? " has" : "") });
+      lbl.textContent = (has ? "✓ " : "+ ") + names[type];
+      const inp = el("input", { type: "file", accept: "image/png,image/jpeg,image/webp",
+        onChange: async (e) => {
+          const file = e.target.files?.[0];
+          if (!file || !STATE.currentProject) return;
+          const fd = new FormData();
+          fd.append("file", file);
+          fd.append("type", type);
+          try {
+            const res = await fetch(API + `/projects/${STATE.currentProject.id}/reference-assets`, { method: "POST", body: fd });
+            const j = await res.json();
+            if (j.success) {
+              REFS_UPLOADED[type] = true;
+              showToast(names[type] + "参考图上传成功", "success");
+              updateUI();
+            } else throw new Error(j.error || "上传失败");
+          } catch(e) { showToast("上传失败: " + e.message, "error"); }
+        }
+      });
+      lbl.append(inp);
+      uploadRow.append(lbl);
+    });
+    body.append(uploadRow);
+
+    // Show uploaded refs
+    if (STATE.refs.length > 0) {
+      const refsRow = el("div", { className: "fupload-preview" });
+      STATE.refs.forEach(r => {
+        const img = el("img", { src: API + `/projects/${STATE.currentProject.id}/reference-assets/${r.id}/image` });
+        refsRow.append(img);
+      });
+      body.append(refsRow);
+    }
+
+    const btn = el("button", { className: "btn btn-primary mt-1",
+      onClick: async () => {
+        const msg = q("#inputScriptText").value.trim();
+        if (!msg) { showToast("请输入脚本内容", "error"); return; }
+        const pid = STATE.currentProject.id;
+        try {
+          const data = await api(`/projects/${pid}/chat`, { method: "POST", body: JSON.stringify({ message: msg }) });
+          showToast(`脚本已生成: ${data.title} (${data.sceneCount} 个镜头)`, "success");
+          await loadScenes();
+        } catch (e) { showToast("脚本生成失败: " + e.message, "error"); }
+      }
+    }, "🤖 创建脚本");
+    body.append(btn);
+  });
+}
+
+// =========================================================================
+// Step 2: Script Preview / Edit
+// =========================================================================
+function buildScriptPreviewStep() {
+  const hasScript = STATE.scenes.length > 0;
+  const sorted = [...STATE.scenes].sort((a, b) => a.order - b.order);
+  return stepCard(2, "编辑脚本段落", hasScript ? "done" : "wait", (body) => {
+    if (sorted.length === 0) {
+      body.append(el("div", { className: "text-muted text-xs" }, "暂无脚本段落，请先在上一步生成脚本"));
+      return;
+    }
+
+    // Scene editor
+    sorted.forEach((scene, i) => {
+      const card = el("div", { className: "card", style: { marginBottom: "8px", background: "rgba(255,255,255,.02)" } });
+      const hdr = el("div", { className: "card-header", style: { padding: "8px 10px" }, onClick: () => card.classList.toggle("open") });
+      hdr.append(el("span", { className: "card-num wait", style: { width: "20px", height: "20px", fontSize: "9px" } }, "#" + (i + 1)));
+      hdr.append(el("span", { style: { fontSize: "12px", flex: 1, fontWeight: 500 } }, scene.title || "Untitled"));
+      hdr.append(el("span", { className: "card-arrow", style: { fontSize: "12px" } }, "▾"));
+      const bd = el("div", { className: "card-body", style: { padding: "0 10px 8px" } });
+
+      // Edit fields
+      ["title","scriptText","dialogue","location","shotSize","cameraMovement","duration"].forEach(field => {
+        const fg = el("div", { className: "fgroup", style: { marginBottom: "6px" } });
+        fg.append(el("label", { style: { fontSize: "9px" } }, field));
+        const inp = el("input", { type: field === "duration" ? "number" : "text", value: String(scene[field] ?? ""), style: { fontSize: "11px", padding: "5px 8px" },
+          onChange: async (e) => {
+            try {
+              await api(`/scenes/${scene.id}`, { method: "PATCH", body: JSON.stringify({ [field]: e.target.value }) });
+              scene[field] = e.target.value;
+            } catch {}
+          }
+        });
+        fg.append(inp);
+        bd.append(fg);
+      });
+
+      // Actions
+      const act = el("div", { className: "btn-group" });
+      if (i > 0) {
+        const up = el("button", { className: "btn btn-sm btn-secondary", onClick: async () => {
+          const ids = sorted.map(s => s.id);
+          [ids[i-1], ids[i]] = [ids[i], ids[i-1]];
+          try { await api("/scenes/reorder", { method: "POST", body: JSON.stringify({ sceneIds: ids }) }); await loadScenes(); } catch(e) { showToast("排序失败", "error"); }
+        } }, "↑ 上移");
+        act.append(up);
+      }
+      const del = el("button", { className: "btn btn-sm btn-rose", onClick: async () => {
+        if (!confirm("确定删除「" + (scene.title || "Untitled") + "」？")) return;
+        try { await fetch(API + `/scenes/${scene.id}`, { method: "DELETE" }); await loadScenes(); } catch(e) { showToast("删除失败", "error"); }
+      } }, "✕ 删除");
+      act.append(del);
+      bd.append(act);
+
+      card.append(hdr, bd);
+      body.append(card);
+    });
+
+    // Add scene
+    if (STATE.currentProject) {
+      const addBtn = el("button", { className: "btn btn-sm btn-secondary mt-1", style: { width: "auto" },
+        onClick: async () => {
+          try { await api(`/projects/${STATE.currentProject.id}/scenes`, { method: "POST", body: "{}" }); await loadScenes(); } catch(e) { showToast("添加失败", "error"); }
+        }
+      }, "+ 添加段落");
+      body.append(addBtn);
+    }
+  });
+}
+
+// =========================================================================
+// Step 3: Storyboard
+// =========================================================================
+function buildStoryboardStep() {
+  const sorted = [...STATE.scenes].sort((a, b) => a.order - b.order);
+  const readySb = sorted.filter(s => {
+    const p = STATE.panels[s.id] || [];
+    return p.filter(x => x.status === "ready").length >= 3;
+  }).length;
+  const hasSb = sorted.length > 0 && readySb > 0;
+  const allSb = sorted.length > 0 && readySb === sorted.length;
+  return stepCard(3, "故事板 (三图素材)", allSb ? "done" : hasSb ? "running" : (sorted.length > 0 ? "active" : "wait"), (body) => {
+    if (sorted.length === 0) {
+      body.append(el("div", { className: "text-muted text-xs" }, "暂无镜头，请先生成脚本"));
+      return;
+    }
+
+    // Stats
+    const stats = el("div", { className: "flex gap-2 mb-1" });
+    stats.append(el("span", { className: "tag" }, "总镜头: " + sorted.length));
+    stats.append(el("span", { className: "tag" }, "已就绪: " + readySb));
+    stats.append(el("span", { className: "tag" }, "缺失: " + (sorted.length - readySb)));
+    body.append(stats);
+
+    // Batch buttons
+    const batchRow = el("div", { className: "btn-group" });
+    const genAll = el("button", { className: "btn btn-sm btn-primary", style: { width: "auto" },
+      onClick: async () => {
+        try {
+          const data = await api(`/projects/${STATE.currentProject.id}/storyboard/generate`, { method: "POST", body: "{}" });
+          showToast("故事板生成任务已提交: " + data.jobId, "success");
+        } catch(e) { showToast("生成失败: " + e.message, "error"); }
+      }
+    }, "🖼 生成全部故事板");
+    batchRow.append(genAll);
+    body.append(batchRow);
+
+    // Scene panels
+    sorted.forEach(scene => {
+      const panels = STATE.panels[scene.id] || [];
+      const card = el("div", { className: "card", style: { marginBottom: "6px", background: "rgba(255,255,255,.02)" } });
+      const hdr = el("div", { className: "card-header", style: { padding: "8px 10px" }, onClick: () => card.classList.toggle("open") });
+      const readyCount = panels.filter(p => p.status === "ready").length;
+      const numEl = el("div", { className: "card-num " + (readyCount >= 3 ? "done" : "wait"), style: { width: "20px", height: "20px", fontSize: "9px" } }, "#" + scene.order);
+      hdr.append(numEl);
+      hdr.append(el("span", { style: { fontSize: "11px", flex: 1, fontWeight: 500 } }, scene.title || "Scene " + scene.order));
+      hdr.append(el("span", { className: "text-xs " + (readyCount >= 3 ? "text-green" : "text-muted") }, readyCount + "/3"));
+      hdr.append(el("span", { className: "card-arrow", style: { fontSize: "12px" } }, "▾"));
+      const bd = el("div", { className: "card-body", style: { padding: "0 10px 8px" } });
+
+      // Panel images
+      const imgRow = el("div", { className: "flex" });
+      const roles = ["start","middle","end"];
+      roles.forEach((role, idx) => {
+        const p = panels.find(x => x.panelIndex === idx);
+        const wrap = el("div", { style: { flex: 1, textAlign: "center" } });
+        const lbl = el("div", { className: "text-xs text-muted" }, role);
+        wrap.append(lbl);
+        if (p?.status === "ready") {
+          wrap.append(el("img", { src: API + `/projects/${STATE.currentProject.id}/scenes/${scene.id}/panels/${idx}/image?v=${p.version}`, style: { width: "100%", aspectRatio: "16/9", objectFit: "cover", borderRadius: "6px", marginTop: "2px" } }));
+        } else {
+          wrap.append(el("div", { style: { width: "100%", aspectRatio: "16/9", background: "rgba(255,255,255,.03)", borderRadius: "6px", marginTop: "2px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "9px", color: "var(--muted)" } }, p?.status === "generating" ? "生成中" : "-"));
+        }
+        imgRow.append(wrap);
+      });
+      bd.append(imgRow);
+
+      // Actions
+      const actRow = el("div", { className: "btn-group mt-1" });
+      const genBtn = el("button", { className: "btn btn-sm btn-primary", style: { width: "auto" },
+        onClick: async () => {
+          try {
+            const data = await api(`/projects/${STATE.currentProject.id}/storyboard/generate`, { method: "POST", body: JSON.stringify({ sceneIds: [scene.id] }) });
+            showToast("生成任务已提交: " + data.jobId, "success");
+          } catch(e) { showToast("生成失败", "error"); }
+        }
+      }, "🖼 生成/重生");
+      actRow.append(genBtn);
+
+      if (readyCount >= 3) {
+        const approve = el("button", { className: "btn btn-sm btn-success", style: { width: "auto" },
+          onClick: async () => {
+            try {
+              await api(`/projects/${STATE.currentProject.id}/scenes/${scene.id}/storyboard-review`, { method: "PATCH", body: JSON.stringify({ status: "approved" }) });
+              showToast("故事板已审核通过", "success");
+              await loadScenes();
+            } catch(e) { showToast("审核失败", "error"); }
+          }
+        }, "✓ 审核通过");
+        actRow.append(approve);
+        const reject = el("button", { className: "btn btn-sm btn-rose", style: { width: "auto" },
+          onClick: async () => {
+            try {
+              await api(`/projects/${STATE.currentProject.id}/scenes/${scene.id}/storyboard-review`, { method: "PATCH", body: JSON.stringify({ status: "rejected" }) });
+              showToast("故事板已驳回", "success");
+              await loadScenes();
+            } catch(e) { showToast("驳回失败", "error"); }
+          }
+        }, "✕ 驳回");
+        actRow.append(reject);
+      }
+      bd.append(actRow);
+
+      card.append(hdr, bd);
+      body.append(card);
+    });
+  });
+}
+
+// =========================================================================
+// Step 4: Video
+// =========================================================================
+function buildVideoStep() {
+  const sorted = [...STATE.scenes].sort((a, b) => a.order - b.order);
+  let vidReady = 0;
+  sorted.forEach(s => {
+    const clips = STATE.clips[s.id] || [];
+    if (clips.some(c => c.status === "ready")) vidReady++;
+  });
+  const hasVid = vidReady > 0;
+  const allVid = sorted.length > 0 && vidReady === sorted.length;
+  return stepCard(4, "生成视频", allVid ? "done" : hasVid ? "running" : (sorted.length > 0 ? "active" : "wait"), (body) => {
+    if (sorted.length === 0) {
+      body.append(el("div", { className: "text-muted text-xs" }, "暂无镜头"));
+      return;
+    }
+
+    const stats = el("div", { className: "flex gap-2 mb-1" });
+    stats.append(el("span", { className: "tag" }, "总镜头: " + sorted.length));
+    stats.append(el("span", { className: "tag" }, "视频就绪: " + vidReady));
+    stats.append(el("span", { className: "tag" }, "待生成: " + (sorted.length - vidReady)));
+    body.append(stats);
+
+    // Batch
+    const batchRow = el("div", { className: "btn-group" });
+    const genVid = el("button", { className: "btn btn-sm btn-primary", style: { width: "auto" },
+      onClick: async () => {
+        if (!STATE.currentProject) return;
+        const approvedIds = sorted.filter(s => s.storyboardReviewStatus === "approved").map(s => s.id);
+        if (approvedIds.length === 0) { showToast("没有审核通过的故事板，请先审核", "error"); return; }
+        try {
+          const res = await fetch(API + `/projects/${STATE.currentProject.id}/videos/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sceneIds: approvedIds }) });
+          const j = await res.json();
+          if (j.success) {
+            showToast("视频生成任务已提交: " + (j.data?.jobId || ""), "success");
+            // Start polling
+            pollVideoJobs();
+          } else throw new Error(j.error || "生成失败");
+        } catch(e) { showToast("生成失败: " + e.message, "error"); }
+      }
+    }, "🎬 生成全部视频（已审核镜头）");
+    batchRow.append(genVid);
+    body.append(batchRow);
+
+    // Scene video statuses
+    sorted.forEach(scene => {
+      const clips = STATE.clips[scene.id] || [];
+      const current = clips.find(c => c.isCurrent) || clips[0];
+      const card = el("div", { className: "card", style: { marginBottom: "6px", background: "rgba(255,255,255,.02)" } });
+      const hdr = el("div", { className: "card-header", style: { padding: "8px 10px" }, onClick: () => card.classList.toggle("open") });
+      const statusIcon = current?.status === "ready" ? "✓" : current?.status === "failed" ? "✗" : current?.status === "running" ? "⋯" : "○";
+      const statusCls = current?.status === "ready" ? "text-green" : current?.status === "failed" ? "text-rose" : "text-muted";
+      hdr.append(el("span", { className: statusCls, style: { fontSize: "12px", width: "16px" } }, statusIcon));
+      hdr.append(el("span", { style: { fontSize: "11px", flex: 1, fontWeight: 500 } }, scene.title || "Scene " + scene.order));
+      hdr.append(el("span", { className: "text-xs " + statusCls }, current?.status || "无"));
+      if (current?.version) hdr.append(el("span", { className: "tag" }, "v" + current.version));
+      hdr.append(el("span", { className: "card-arrow", style: { fontSize: "12px" } }, "▾"));
+      const bd = el("div", { className: "card-body", style: { padding: "0 10px 8px" } });
+
+      if (current?.status === "ready") {
+        // Video player
+        const vidUrl = API + `/projects/${STATE.currentProject.id}/scenes/${scene.id}/videos/${current.id}/video`;
+        const vid = el("video", { src: vidUrl, controls: "", preload: "metadata", style: { width: "100%", borderRadius: "8px", marginTop: "4px" } });
+        bd.append(vid);
+        const info = el("div", { className: "flex gap-1 mt-1" });
+        info.append(el("span", { className: "tag" }, "v" + current.version));
+        info.append(el("span", { className: "tag" }, current.duration + "s"));
+        info.append(el("span", { className: "tag " + (current.reviewStatus === "approved" ? "text-green" : current.reviewStatus === "rejected" ? "text-rose" : "") }, current.reviewStatus || "待审核"));
+        bd.append(info);
+
+        // Review buttons
+        if (current.reviewStatus !== "approved") {
+          const actRow = el("div", { className: "btn-group mt-1" });
+          const approveBtn = el("button", { className: "btn btn-sm btn-success", style: { width: "auto" },
+            onClick: async () => {
+              try {
+                await api(`/projects/${STATE.currentProject.id}/scenes/${scene.id}/videos/${current.id}/review`, { method: "PATCH", body: JSON.stringify({ status: "approved", setCurrent: true }) });
+                showToast("视频已审核通过并设为当前版本", "success");
+                await loadScenes();
+              } catch(e) { showToast("审核失败", "error"); }
+            }
+          }, "✓ 通过并设为当前");
+          actRow.append(approveBtn);
+          const rejectBtn = el("button", { className: "btn btn-sm btn-rose", style: { width: "auto" },
+            onClick: async () => {
+              try {
+                await api(`/projects/${STATE.currentProject.id}/scenes/${scene.id}/videos/${current.id}/review`, { method: "PATCH", body: JSON.stringify({ status: "rejected" }) });
+                showToast("视频已驳回", "success");
+                await loadScenes();
+              } catch(e) { showToast("驳回失败", "error"); }
+            }
+          }, "✕ 驳回");
+          actRow.append(rejectBtn);
+          bd.append(actRow);
+        }
+
+        // Switch version
+        if (clips.length > 1) {
+          const verRow = el("div", { className: "flex gap-1 mt-1" });
+          clips.forEach(c => {
+            const isCurrent = c.isCurrent || c.id === current.id;
+            const vl = el("button", { className: "btn btn-sm " + (isCurrent ? "btn-primary" : "btn-secondary"), style: { width: "auto", padding: "3px 8px", fontSize: "10px" },
+              onClick: async () => {
+                try {
+                  await api(`/projects/${STATE.currentProject.id}/scenes/${scene.id}/videos/${c.id}/select-version`, { method: "POST" });
+                  showToast("已切换到 v" + c.version, "success");
+                  await loadScenes();
+                } catch(e) { showToast("切换失败", "error"); }
+              }
+            }, "v" + c.version);
+            verRow.append(vl);
+          });
+          bd.append(el("div", { className: "text-xs text-muted mt-1" }, "切换版本:"));
+          bd.append(verRow);
+        }
+      } else if (current?.status === "failed") {
+        bd.append(el("div", { className: "resp error" }, "错误: " + (current.error || current.diagnostics?.errorMessage || "未知错误")));
+        // Retry
+        const retryBtn = el("button", { className: "btn btn-sm btn-amber mt-1", style: { width: "auto" },
+          onClick: async () => {
+            try {
+              const res = await fetch(API + `/projects/${STATE.currentProject.id}/scenes/${scene.id}/videos/${current.id}/retry`, { method: "POST" });
+              const j = await res.json();
+              if (!j.success) throw new Error(j.error || "重试失败");
+              showToast("重试任务已提交", "success");
+              pollVideoJobs();
+            } catch(e) { showToast("重试失败: " + e.message, "error"); }
+          }
+        }, "🔄 重试");
+        bd.append(retryBtn);
+
+        // Diagnostics
+        const diagBtn = el("button", { className: "btn btn-sm btn-secondary mt-1", style: { width: "auto" },
+          onClick: async () => {
+            const resp = el("pre", { className: "resp" });
+            try {
+              const d = await api(`/projects/${STATE.currentProject.id}/scenes/${scene.id}/videos/${current.id}/diagnostics`);
+              resp.textContent = JSON.stringify(d, null, 2);
+            } catch(e) { resp.textContent = "获取诊断失败: " + e.message; resp.className = "resp error"; }
+            bd.append(resp);
+          }
+        }, "🔍 查看诊断");
+        bd.append(diagBtn);
+      } else {
+        bd.append(el("div", { className: "text-muted text-xs" }, "无视频。请先在上一步生成故事板并审核通过。"));
+        // Single generate button
+        const genBtn = el("button", { className: "btn btn-sm btn-primary mt-1", style: { width: "auto" },
+          onClick: async () => {
+            try {
+              const res = await fetch(API + `/projects/${STATE.currentProject.id}/videos/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ sceneIds: [scene.id] }) });
+              const j = await res.json();
+              if (j.success) { showToast("视频生成任务已提交", "success"); pollVideoJobs(); } else throw new Error(j.error);
+            } catch(e) { showToast("生成失败", "error"); }
+          }
+        }, "🎬 生成视频");
+        bd.append(genBtn);
+      }
+
+      card.append(hdr, bd);
+      body.append(card);
+    });
+  });
+}
+
+// =========================================================================
+// Step 5: Export
+// =========================================================================
+function buildExportStep() {
+  const sorted = [...STATE.scenes].sort((a, b) => a.order - b.order);
+  const allReady = sorted.length > 0 && sorted.every(s => {
+    const clips = STATE.clips[s.id] || [];
+    return clips.some(c => c.status === "ready");
+  });
+  return stepCard(5, "预检 & 导出", allReady ? "done" : "wait", (body) => {
+    if (sorted.length === 0) {
+      body.append(el("div", { className: "text-muted text-xs" }, "暂无镜头"));
+      return;
+    }
+
+    const preflightBtn = el("button", { className: "btn btn-primary mt-1",
+      onClick: async () => {
+        try {
+          const data = await api(`/projects/${STATE.currentProject.id}/export/preflight`);
+          const info = [
+            "总镜头: " + data.totalScenes,
+            "可导出: " + data.readyScenes,
+            "已审核: " + data.approvedVideoScenes,
+            "预定时长: " + data.estimatedDuration + "s",
+            "缺失镜头数: " + (data.missingScenes?.length || 0),
+            "未审核数: " + (data.unapprovedVideoScenes?.length || 0),
+            "canExport: " + data.canExport,
+            "canPartialExport: " + data.canPartialExport,
+          ].join("\n");
+          const pre = el("pre", { className: "resp success" });
+          pre.textContent = info;
+          body.append(pre);
+        } catch(e) {
+          const pre = el("pre", { className: "resp error" });
+          pre.textContent = "预检失败: " + e.message;
+          body.append(pre);
+        }
+      }
+    }, "📋 打开导出预检");
+    body.append(preflightBtn);
+
+    const exportBtn = el("button", { className: "btn btn-success mt-1",
+      onClick: async () => {
+        try {
+          // Full export
+          const data = await api(`/projects/${STATE.currentProject.id}/export`, { method: "POST", body: JSON.stringify({ allowPartial: false }) });
+          showToast("导出任务已提交: " + data.jobId, "success");
+          // Start polling
+          pollExportJob(data.jobId);
+        } catch(e) { showToast("导出失败: " + e.message, "error"); }
+      }
+    }, "📤 完整导出");
+    body.append(exportBtn);
+
+    // Result will be shown here
+    body.append(el("div", { id: "exportResult" }));
+  });
+}
+
+// =========================================================================
+// Job Polling
+// =========================================================================
+function pollVideoJobs() {
+  if (!STATE.currentProject) return;
+  let count = 0;
+  const iv = setInterval(async () => {
+    count++;
+    try {
+      await loadScenes();
+      if (count > 30) { clearInterval(iv); } // 60s max
+    } catch {}
+  }, 2000);
+}
+
+function pollExportJob(jobId) {
+  let count = 0;
+  const container = q("#exportResult");
+  const pre = el("pre", { className: "resp loading" });
+  pre.textContent = "导出中... 0%";
+  container.append(pre);
+  const iv = setInterval(async () => {
+    count++;
+    try {
+      const job = await api(`/jobs/${jobId}`);
+      pre.textContent = "导出中... " + (job.progress || 0) + "%";
+      if (job.status === "success") {
+        clearInterval(iv);
+        const result = job.resultJson ? JSON.parse(job.resultJson) : {};
+        pre.className = "resp success";
+        pre.textContent = "导出成功!\n文件: " + (result.filename || "?") + "\n\n完整数据: " + JSON.stringify(result, null, 2);
+        if (result.filename) {
+          const dl = el("a", { href: API + `/projects/${STATE.currentProject.id}/exports/${result.filename}`, download: "", className: "btn btn-sm btn-success mt-1", style: { display: "inline-flex", width: "auto" } }, "⬇ 下载视频");
+          container.append(dl);
+        }
+      } else if (job.status === "failed") {
+        clearInterval(iv);
+        pre.className = "resp error";
+        pre.textContent = "导出失败: " + (job.error || "未知错误");
+      } else if (job.status === "cancelled") {
+        clearInterval(iv);
+        pre.className = "resp error";
+        pre.textContent = "导出已取消";
+      }
+      if (count > 60) { clearInterval(iv); pre.textContent += "\n(轮询超时)"; }
+    } catch {}
+  }, 1000);
+}
+
+// =========================================================================
+// Project Info Panel
+// =========================================================================
+function buildProjectInfo() {
+  if (!STATE.currentProject) return el("div");
+  const card = el("div", { className: "card" });
+  const hdr = el("div", { className: "card-header", style: { opacity: .7 }, onClick: () => card.classList.toggle("open") });
+  hdr.append(el("span", { style: { fontSize: "12px", flex: 1 } }, "📋 项目详情"));
+  hdr.append(el("span", { className: "card-arrow", style: { fontSize: "12px" } }, "▾"));
+  const bd = el("div", { className: "card-body" });
+  const p = STATE.currentProject;
+  const lines = [
+    "ID: " + p.id,
+    "名称: " + p.title,
+    "比例: " + p.aspectRatio,
+    "分辨率: " + p.resolution,
+    "创建时间: " + new Date(p.createdAt).toLocaleString(),
+    "更新时间: " + new Date(p.updatedAt).toLocaleString(),
+  ];
+  if (STATE.scenes.length > 0) {
+    lines.push("---");
+    sortedScenes = [...STATE.scenes].sort((a, b) => a.order - b.order);
+    sortedScenes.forEach(s => {
+      const pn = STATE.panels[s.id] || [];
+      const cl = STATE.clips[s.id] || [];
+      const readyPn = pn.filter(x => x.status === "ready").length;
+      const readyCl = cl.filter(x => x.status === "ready").length;
+      lines.push(`  #${s.order} ${s.title} | 面板:${readyPn}/3 | 视频:${readyCl} | 审:${s.storyboardReviewStatus || "-"} | 状态:${s.status}`);
+    });
+  }
+  bd.append(el("pre", { className: "resp", style: { maxHeight: "300px" } }, lines.join("\n")));
+  card.append(hdr, bd);
+  return card;
+}
+let sortedScenes; // shared for project info
+
+function buildNoProjectInfo() {
+  const card = el("div", { className: "card" });
+  card.append(el("div", { className: "text-muted text-xs", style: { padding: "14px", textAlign: "center" } },
+    "在上方选择已有项目，或创建新项目开始测试工作流。\n\n测试路径：创建项目 → 输入脚本 → 编辑段落 → 生成故事板 → 审核 → 生成视频 → 审核 → 导出"));
+  return card;
+}
+
+// =========================================================================
+// Init
+// =========================================================================
+async function init() {
+  await loadProjects();
+  const sel = q("#projectSelect");
+  if (sel.options.length > 1) {
+    sel.selectedIndex = 1;
+    onProjectChange(sel.value);
+  } else {
+    updateUI();
+  }
+}
+
+init();
+</script>
+</body>
+</html>

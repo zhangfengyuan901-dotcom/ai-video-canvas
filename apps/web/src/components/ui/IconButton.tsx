@@ -22,8 +22,8 @@ export default function IconButton({
   };
 
   const variants: Record<string, string> = {
-    ghost: "text-zinc-500 hover:text-zinc-300 hover:bg-white/[0.06] active:bg-white/[0.03]",
-    glass: "text-zinc-400 hover:text-zinc-200 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06]",
+    ghost: "text-gray-400 hover:text-gray-200 hover:bg-gray-700 active:bg-gray-600",
+    glass: "text-gray-400 hover:text-gray-200 bg-gray-700/50 hover:bg-gray-600 border border-gray-600",
     primary: "text-white bg-blue-600 hover:bg-blue-500 active:bg-blue-700",
     danger: "text-rose-400 hover:text-rose-300 hover:bg-rose-600/15 active:bg-rose-600/10",
   };

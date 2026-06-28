@@ -94,7 +94,7 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
   }
 
   function SourceBadge({ source }: { source: string }) {
-    if (source === "env") return <span className="text-[9px] bg-zinc-700 text-zinc-400 px-1 rounded">ENV</span>;
+    if (source === "env") return <span className="text-[9px] bg-gray-600 text-gray-400 px-1 rounded">ENV</span>;
     if (source === "stored") return <span className="text-[9px] bg-blue-800/40 text-blue-400 px-1 rounded">本地配置</span>;
     return null;
   }
@@ -102,15 +102,15 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
   return (
     <>
       <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 w-[460px] bg-zinc-950 border-l border-zinc-800 shadow-xl z-50 flex flex-col">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 shrink-0">
-          <h2 className="text-sm font-semibold text-zinc-200">API 配置</h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-300 text-lg leading-none">&times;</button>
+      <div className="fixed inset-y-0 right-0 w-[460px] bg-gray-900 border-l border-gray-700 shadow-xl z-50 flex flex-col">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 shrink-0">
+          <h2 className="text-sm font-semibold text-gray-200">API 配置</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">&times;</button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-6">
           {loading ? (
-            <p className="text-xs text-zinc-500">加载中...</p>
+            <p className="text-xs text-gray-500">加载中...</p>
           ) : (
             <>
               {error && <div className="text-xs text-red-400 bg-red-600/10 rounded px-3 py-2">{error}</div>}
@@ -118,72 +118,72 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
 
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-zinc-300">图片生成 API · Packy</span>
+                  <span className="text-xs font-medium text-gray-300">图片生成 API · Packy</span>
                   <ConfiguredBadge configured={status?.packy.configured ?? false} />
                   <SourceBadge source={status?.packy.source ?? "missing"} />
                 </div>
                 <label className="block">
-                  <span className="text-[10px] text-zinc-500">Base URL</span>
+                  <span className="text-[10px] text-gray-500">Base URL</span>
                   <input type="text" value={packyBaseUrl} onChange={(e) => setPackyBaseUrl(e.target.value)}
-                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-600" />
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-600" />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] text-zinc-500">Image Model</span>
+                  <span className="text-[10px] text-gray-500">Image Model</span>
                   <input type="text" value={packyModel} onChange={(e) => setPackyModel(e.target.value)}
-                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-600" />
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-600" />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] text-zinc-500">API Key</span>
+                  <span className="text-[10px] text-gray-500">API Key</span>
                   <input type="password" value={packyKey} onChange={(e) => setPackyKey(e.target.value)}
                     placeholder={status?.packy.configured ? "已配置，留空则不修改" : "请输入 API Key"}
-                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600" />
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
                 </label>
                 {status?.packy.configured && (
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input type="checkbox" checked={clearPackyKey} onChange={(e) => setClearPackyKey(e.target.checked)} className="accent-red-600" />
-                    <span className="text-[10px] text-zinc-500">清除已保存的密钥</span>
+                    <span className="text-[10px] text-gray-500">清除已保存的密钥</span>
                   </label>
                 )}
               </section>
 
-              <hr className="border-zinc-800" />
+              <hr className="border-gray-700" />
 
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-zinc-300">视频生成 API · RunningHub</span>
+                  <span className="text-xs font-medium text-gray-300">视频生成 API · RunningHub</span>
                   <ConfiguredBadge configured={status?.runninghub.configured ?? false} />
                   <SourceBadge source={status?.runninghub.source ?? "missing"} />
                 </div>
                 <label className="block">
-                  <span className="text-[10px] text-zinc-500">API Key</span>
+                  <span className="text-[10px] text-gray-500">API Key</span>
                   <input type="password" value={rhKey} onChange={(e) => setRhKey(e.target.value)}
                     placeholder={status?.runninghub.configured ? "已配置，留空则不修改" : "请输入 API Key"}
-                    className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-600" />
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
                 </label>
                 {status?.runninghub.configured && (
                   <label className="flex items-center gap-1.5 cursor-pointer">
                     <input type="checkbox" checked={clearRhKey} onChange={(e) => setClearRhKey(e.target.checked)} className="accent-red-600" />
-                    <span className="text-[10px] text-zinc-500">清除已保存的密钥</span>
+                    <span className="text-[10px] text-gray-500">清除已保存的密钥</span>
                   </label>
                 )}
                 <button onClick={() => setShowAdvanced(!showAdvanced)}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-300 transition-colors">
+                  className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors">
                   {showAdvanced ? "收起高级设置" : "展开高级设置"}
                 </button>
                 {showAdvanced && (
-                  <div className="space-y-3 pl-2 border-l border-zinc-800">
+                  <div className="space-y-3 pl-2 border-l border-gray-700">
                     {[{ l: "Submit URL", v: rhSubmitUrl, s: setRhSubmitUrl }, { l: "Query URL", v: rhQueryUrl, s: setRhQueryUrl }, { l: "Upload URL", v: rhUploadUrl, s: setRhUploadUrl }].map(({ l, v, s }) => (
                       <label key={l} className="block">
-                        <span className="text-[10px] text-zinc-500">{l}</span>
+                        <span className="text-[10px] text-gray-500">{l}</span>
                         <input type="text" value={v} onChange={(e) => s(e.target.value)}
-                          className="w-full mt-0.5 bg-zinc-800 border border-zinc-700 rounded px-2 py-1.5 text-xs text-zinc-200 focus:outline-none focus:border-blue-600" />
+                          className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-600" />
                       </label>
                     ))}
                   </div>
                 )}
               </section>
 
-              <hr className="border-zinc-800" />
+              <hr className="border-gray-700" />
 
               {checkResult && (
                 <div className="space-y-1">
@@ -196,17 +196,17 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
                 </div>
               )}
 
-              <p className="text-[10px] text-zinc-600 text-center">后续会在这里接入更多模型与服务配置。</p>
+              <p className="text-[10px] text-gray-500 text-center">后续会在这里接入更多模型与服务配置。</p>
             </>
           )}
         </div>
 
-        <div className="border-t border-zinc-800 px-5 py-3 flex items-center gap-2 shrink-0">
-          <button onClick={handleReload} className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">重新读取</button>
-          <button onClick={handleCheck} className="text-xs px-3 py-1.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition-colors">自检</button>
+        <div className="border-t border-gray-700 px-5 py-3 flex items-center gap-2 shrink-0">
+          <button onClick={handleReload} className="text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">重新读取</button>
+          <button onClick={handleCheck} className="text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">自检</button>
           <div className="flex-1" />
           <button onClick={handleSave} disabled={saving}
-            className="text-xs px-4 py-1.5 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white disabled:bg-zinc-700 disabled:text-zinc-500">
+            className="text-xs px-4 py-1.5 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white disabled:bg-gray-600 disabled:text-gray-500">
             {saving ? "保存中..." : "保存配置"}
           </button>
         </div>

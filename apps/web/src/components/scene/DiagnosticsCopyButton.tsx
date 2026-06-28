@@ -30,7 +30,7 @@ export default function DiagnosticsCopyButton({ label, value }: DiagnosticsCopyB
       type="button"
       onClick={handleCopy}
       disabled={!value}
-      className="text-[10px] rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-zinc-400 hover:text-zinc-200 disabled:opacity-40 disabled:hover:text-zinc-400"
+      className="text-[10px] rounded border border-gray-600 bg-gray-800 px-2 py-1 text-gray-400 hover:text-gray-200 disabled:opacity-40 disabled:hover:text-gray-400"
     >
       {copied ? "已复制" : label}
     </button>

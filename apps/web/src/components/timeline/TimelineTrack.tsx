@@ -1,6 +1,6 @@
-﻿// =========================================================================
+// =========================================================================
 // TimelineTrack — 单条时间线轨道 (Storyboard / Video) (redesigned)
-// 支持拖拽排序 + 视频生成管理（Phase 4）
+// 支持拖拽排序 + 视频生成管理（Phase 4）+ zoom 缩放
 // =========================================================================
 
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -13,9 +13,10 @@ import { VideoIcon, Image } from "lucide-react";
 interface TimelineTrackProps {
   label: string;
   type: "storyboard" | "video";
+  zoom?: number;
 }
 
-export default function TimelineTrack({ label, type }: TimelineTrackProps) {
+export default function TimelineTrack({ label, type, zoom = 50 }: TimelineTrackProps) {
   const scenes = useProjectStore((s) => s.scenes);
   const panelsByScene = useProjectStore((s) => s.panelsByScene);
   const clipsByScene = useProjectStore((s) => s.clipsByScene);
@@ -32,6 +33,9 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
   const [videoJobProgress, setVideoJobProgress] = useState<number>(0);
   const dragIdRef = useRef<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
+
+  // Scale factor from zoom (0–100) → 0.5x – 1.5x
+  const scale = 0.5 + zoom / 100;
 
   // ---- Video: fetch clips (stable callback via getState) ----------------
 
@@ -255,8 +259,8 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
       <div className="flex-1 flex flex-col min-h-0">
         <TrackHeader label={label} count={0} type={type} typeIcon={typeIcon} />
         <div className="flex-1 flex items-center justify-center">
-          <p className="text-xs text-zinc-600">
-            {currentProject ? "暂无镜头，请先在左侧生成脚本" : "请先创建或打开一个项目"}
+          <p className="text-xs text-gray-500">
+            {currentProject ? "No shots yet — generate a script first" : "Create or open a project first"}
           </p>
         </div>
       </div>
@@ -279,7 +283,10 @@ export default function TimelineTrack({ label, type }: TimelineTrackProps) {
         progress={videoJobProgress}
       />
       <div className="flex-1 overflow-x-auto overflow-y-hidden px-2 pb-2">
-        <div className="flex gap-2 h-full items-start pt-2 min-w-min">
+        <div
+          className="flex gap-2 h-full items-start pt-2 min-w-min"
+          style={{ transform: `scaleX(${scale})`, transformOrigin: "left center" }}
+        >
           {scenes.map((scene) => (
             <TimelineItem
               key={scene.id}
@@ -333,13 +340,13 @@ function TrackHeader({
   progress?: number;
 }) {
   return (
-    <div className="h-7 flex items-center px-3 gap-2 shrink-0 bg-white/[0.02]">
-      <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-zinc-500">
+    <div className="h-7 flex items-center px-3 gap-2 shrink-0">
+      <span className="flex items-center gap-1 text-[10px] font-medium uppercase tracking-wider text-gray-400">
         {typeIcon}
         {label}
       </span>
-      <span className="text-[10px] text-zinc-600">
-        {count > 0 ? `${count} 个` : ""}
+      <span className="text-[10px] text-gray-500">
+        {count > 0 ? `${count} clips` : ""}
       </span>
       <div className="flex-1" />
 
@@ -353,7 +360,7 @@ function TrackHeader({
               : "bg-blue-600/80 hover:bg-blue-600 text-white disabled:opacity-40 disabled:pointer-events-none"
           }`}
         >
-          {isGenerating ? `生成中... ${progress ?? 0}%` : "生成全部视频"}
+          {isGenerating ? `Generating... ${progress ?? 0}%` : "Generate All Video"}
         </button>
       )}
     </div>

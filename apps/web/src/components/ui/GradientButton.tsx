@@ -28,13 +28,13 @@ export default function GradientButton({
     primary:
       "bg-gradient-to-b from-blue-500 to-blue-600 text-white shadow-sm shadow-blue-500/20 hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700",
     secondary:
-      "bg-zinc-800 text-zinc-300 border border-zinc-700/50 hover:bg-zinc-700 hover:text-zinc-200 active:bg-zinc-800",
+      "bg-gray-700 text-gray-300 border border-gray-600 hover:bg-gray-600 hover:text-gray-200 active:bg-gray-700",
     ghost:
-      "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.06] active:bg-white/[0.03]",
+      "text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 active:bg-gray-700",
     danger:
       "bg-rose-600/15 text-rose-400 border border-rose-600/20 hover:bg-rose-600/25 hover:text-rose-300 active:bg-rose-600/20",
     glass:
-      "bg-white/[0.04] text-zinc-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-zinc-200 active:bg-white/[0.03] backdrop-blur-sm",
+      "bg-gray-700/50 text-gray-300 border border-gray-600 hover:bg-gray-600/50 hover:text-gray-200 active:bg-gray-700 backdrop-blur-sm",
   };
 
   return (

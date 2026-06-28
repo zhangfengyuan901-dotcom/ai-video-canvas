@@ -22,21 +22,21 @@ export default function BentoCard({
     <div
       onClick={onClick}
       className={cn(
-        "rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 transition-all duration-200",
+        "rounded-xl border border-gray-700 bg-gray-800 p-3 transition-all duration-200",
         accent
-          ? "border-emerald-500/20 bg-emerald-500/[0.03]"
-          : "hover:border-white/[0.10] hover:bg-white/[0.03]",
+          ? "border-emerald-500/20 bg-emerald-500/[0.05]"
+          : "hover:border-gray-600 hover:bg-gray-700",
         onClick && "cursor-pointer",
         className,
       )}
     >
-      <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 mb-1">
+      <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-1">
         {label}
       </p>
       <p
         className={cn(
           "text-lg font-semibold tracking-tight",
-          accent ? "text-emerald-400" : "text-zinc-100",
+          accent ? "text-emerald-400" : "text-gray-100",
         )}
       >
         {value}

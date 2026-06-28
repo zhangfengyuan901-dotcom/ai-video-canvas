@@ -111,7 +111,7 @@ export default function ScriptInputPanel() {
           placeholder={currentProject ? "输入完整脚本或创意描述，并上传参考图..." : "请先创建或打开一个项目"}
           disabled={!currentProject || generating}
           rows={4}
-          className="w-full bg-zinc-800/50 border border-white/[0.08] rounded-xl px-4 py-3 text-sm text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-blue-500/40 focus:bg-zinc-800/80 resize-none disabled:opacity-50 transition-colors"
+          className="w-full bg-gray-700/50 border border-gray-600 rounded-xl px-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-500/40 focus:bg-gray-700/80 resize-none disabled:opacity-50 transition-colors"
         />
         {message.trim() && (
           <div className="absolute bottom-3 right-3">
@@ -122,7 +122,7 @@ export default function ScriptInputPanel() {
 
       {/* Reference upload grid */}
       <div>
-        <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 mb-2">参考图（可选）</p>
+        <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-2">参考图（可选）</p>
         <div className="flex gap-2 flex-wrap">
           {assetTypes.map(({ type, label, icon }) => {
             const hasAsset = referenceAssets.some((a) => a.type === type);
@@ -132,7 +132,7 @@ export default function ScriptInputPanel() {
                 className={`relative flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-xl cursor-pointer border transition-all ${
                   hasAsset
                     ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
-                    : "bg-white/[0.03] border-white/[0.08] text-zinc-400 hover:border-white/[0.15] hover:text-zinc-300"
+                    : "bg-gray-800/80 border-gray-600 text-gray-400 hover:border-gray-400 hover:text-gray-300"
                 }`}
               >
                 <span className="text-[11px]">{hasAsset ? "✓" : icon}</span>
@@ -156,18 +156,18 @@ export default function ScriptInputPanel() {
       {/* Reference assets list */}
       {referenceAssets.length > 0 && (
         <div>
-          <p className="text-[10px] font-medium uppercase tracking-wider text-zinc-500 mb-2">已上传 ({referenceAssets.length})</p>
+          <p className="text-[10px] font-medium uppercase tracking-wider text-gray-500 mb-2">已上传 ({referenceAssets.length})</p>
           <div className="flex flex-wrap gap-2">
             {referenceAssets.map((asset) => (
-              <div key={asset.id} className="group relative flex items-center gap-2 bg-white/[0.04] border border-white/[0.06] rounded-xl p-1.5 pr-3">
+              <div key={asset.id} className="group relative flex items-center gap-2 bg-gray-700 border border-gray-700 rounded-xl p-1.5 pr-3">
                 <img
                   src={`/api/projects/${currentProject?.id}/reference-assets/${asset.id}/image`}
                   alt=""
-                  className="h-10 w-10 rounded-lg object-cover ring-1 ring-white/[0.06]"
+                  className="h-10 w-10 rounded-lg object-cover ring-1 ring-gray-700"
                 />
                 <div className="min-w-0">
-                  <p className="text-[11px] text-zinc-400 capitalize">{asset.type}</p>
-                  {asset.label && <p className="text-[10px] text-zinc-500 truncate max-w-[60px]">{asset.label}</p>}
+                  <p className="text-[11px] text-gray-400 capitalize">{asset.type}</p>
+                  {asset.label && <p className="text-[10px] text-gray-500 truncate max-w-[60px]">{asset.label}</p>}
                 </div>
                 <button
                   onClick={() => handleDeleteAsset(asset.id)}
@@ -207,7 +207,7 @@ export default function ScriptInputPanel() {
           <span className="text-[10px] text-amber-500/70">请先创建或选择项目</span>
         )}
         {currentProject && scenes.length > 0 && (
-          <span className="text-[10px] text-zinc-500">已有 {scenes.length} 个镜头，重新生成将会替换</span>
+          <span className="text-[10px] text-gray-500">已有 {scenes.length} 个镜头，重新生成将会替换</span>
         )}
       </div>
     </GlassPanel>

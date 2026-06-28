@@ -13,8 +13,8 @@ export default function GlassPanel({ children, className, hover = false, onClick
     <div
       onClick={onClick}
       className={cn(
-        "rounded-xl border border-white/[0.08] bg-white/[0.03] shadow-sm backdrop-blur-sm",
-        hover && "transition-all duration-200 hover:border-white/[0.14] hover:bg-white/[0.05] hover:shadow-md",
+        "rounded-xl border border-gray-700 bg-gray-800/80 shadow-sm",
+        hover && "transition-all duration-200 hover:border-gray-600 hover:bg-gray-700/80 hover:shadow-md",
         onClick && "cursor-pointer",
         className,
       )}
