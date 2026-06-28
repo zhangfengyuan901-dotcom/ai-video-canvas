@@ -15,6 +15,8 @@
     "build:server": "npm run build -w apps/server",
     "build:web": "npm run build -w apps/web",
     "db:push": "npm run db:push -w apps/server",
+    "desktop:dev": "concurrently -k -n server,web,electron -c blue,green,magenta \"npm run dev -w apps/server\" \"npm run dev -w apps/web\" \"wait-on http://127.0.0.1:3001/api/health http://127.0.0.1:5173 && npm run dev -w apps/desktop\"",
+    "desktop:build": "npm run build -w apps/server && npm run build -w apps/web && npm run build -w apps/desktop",
     "verify:script": "npx tsx phase0/verify-1-gpt-script.ts",
     "verify:image": "npx tsx phase0/verify-2-image-gen.ts",
     "verify:video": "npx tsx phase0/verify-3-video-gen.ts"
