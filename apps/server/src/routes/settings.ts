@@ -27,6 +27,9 @@ export async function settingsRoutes(app: FastifyInstance) {
     const body = (request.body ?? {}) as ApiConfigPatch;
 
     // 验证：URL 字段不为空
+    if (body.chat?.baseUrl !== undefined && !body.chat.baseUrl.trim()) {
+      return reply.status(400).send({ success: false, error: "Chat baseUrl is required" });
+    }
     if (body.packy?.baseUrl !== undefined && !body.packy.baseUrl.trim()) {
       return reply.status(400).send({ success: false, error: "Packy baseUrl is required" });
     }

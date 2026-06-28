@@ -4,10 +4,11 @@
 // =========================================================================
 
 import { gptScriptOutputSchema, type GptScriptOutput } from "@ai-video-canvas/shared";
+import { getEffectiveApiConfig } from "../settings/ApiConfigService.js";
 
-const BASE_URL = process.env.PACKY_BASE_URL ?? "https://www.packyapi.com/v1";
-const API_KEY = process.env.PACKY_CHAT_API_KEY ?? "";
-const MODEL = process.env.PACKY_CHAT_MODEL ?? "gpt-5.2";
+function getChatConfig() {
+  return getEffectiveApiConfig().chat;
+}
 
 // ---- Prompt 模板 -------------------------------------------------------
 
@@ -60,18 +61,20 @@ JSON Schema:
 // ---- 核心方法 -----------------------------------------------------------
 
 export async function generateScript(userPrompt: string): Promise<GptScriptOutput> {
-  if (!API_KEY || API_KEY === "your_chat_group_key") {
-    throw new Error("PACKY_CHAT_API_KEY is not configured in .env");
+  const chatConfig = getChatConfig();
+
+  if (!chatConfig.apiKey) {
+    throw new Error("Chat LLM API key is not configured. Set it in Settings → API Configuration.");
   }
 
-  const response = await fetch(`${BASE_URL}/chat/completions`, {
+  const response = await fetch(`${chatConfig.baseUrl}/chat/completions`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${API_KEY}`,
+      Authorization: `Bearer ${chatConfig.apiKey}`,
     },
     body: JSON.stringify({
-      model: MODEL,
+      model: chatConfig.model,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user", content: userPrompt },

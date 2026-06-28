@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { useApiSettings } from "../../hooks/useApiSettings";
-import type { ApiSettingsStatus } from "../../hooks/useApiSettings";
+import type { ApiSettingsStatus, ApiSettingsCheckResult } from "../../hooks/useApiSettings";
 
 interface ApiSettingsPanelProps {
   onClose: () => void;
@@ -16,10 +16,15 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
   const [status, setStatus] = useState<ApiSettingsStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [checkResult, setCheckResult] = useState<{ packy: { configured: boolean; message: string }; runninghub: { configured: boolean; message: string } } | null>(null);
+  const [checkResult, setCheckResult] = useState<ApiSettingsCheckResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
+  const [chatKey, setChatKey] = useState("");
+  const [chatBaseUrl, setChatBaseUrl] = useState("");
+  const [chatModel, setChatModel] = useState("");
+  const [clearChatKey, setClearChatKey] = useState(false);
+  const [showChatAdvanced, setShowChatAdvanced] = useState(false);
   const [packyKey, setPackyKey] = useState("");
   const [packyBaseUrl, setPackyBaseUrl] = useState("");
   const [packyModel, setPackyModel] = useState("");
@@ -37,6 +42,8 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
       try {
         const s = await getApiSettings();
         setStatus(s);
+        setChatBaseUrl(s.chat.baseUrl);
+        setChatModel(s.chat.model);
         setPackyBaseUrl(s.packy.baseUrl);
         setPackyModel(s.packy.imageModel);
         setRhSubmitUrl(s.runninghub.submitUrl);
@@ -60,12 +67,13 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
     setError(null); setSuccessMsg(null); setSaving(true);
     try {
       const payload: any = {
+        chat: { baseUrl: chatBaseUrl.trim() || undefined, model: chatModel.trim() || undefined, apiKey: chatKey.trim() || undefined, clearApiKey: clearChatKey },
         packy: { baseUrl: packyBaseUrl.trim() || undefined, imageModel: packyModel.trim() || undefined, apiKey: packyKey.trim() || undefined, clearApiKey: clearPackyKey },
         runninghub: { apiKey: rhKey.trim() || undefined, clearApiKey: clearRhKey, submitUrl: rhSubmitUrl.trim() || undefined, queryUrl: rhQueryUrl.trim() || undefined, uploadUrl: rhUploadUrl.trim() || undefined },
       };
       const result = await saveApiSettings(payload);
       setStatus(result);
-      setPackyKey(""); setRhKey(""); setClearPackyKey(false); setClearRhKey(false);
+      setChatKey(""); setPackyKey(""); setRhKey(""); setClearChatKey(false); setClearPackyKey(false); setClearRhKey(false);
       setSuccessMsg("已保存");
     } catch {
       setError("保存失败，请检查配置格式或服务端日志。");
@@ -81,10 +89,12 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
   }
 
   async function handleReload() {
-    setCheckResult(null); setError(null); setPackyKey(""); setRhKey("");
+    setCheckResult(null); setError(null); setChatKey(""); setPackyKey(""); setRhKey("");
     try {
       const s = await getApiSettings();
       setStatus(s);
+      setChatBaseUrl(s.chat.baseUrl);
+      setChatModel(s.chat.model);
       setPackyBaseUrl(s.packy.baseUrl);
       setPackyModel(s.packy.imageModel);
       setRhSubmitUrl(s.runninghub.submitUrl);
@@ -115,6 +125,42 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
             <>
               {error && <div className="text-xs text-red-400 bg-red-600/10 rounded px-3 py-2">{error}</div>}
               {successMsg && <div className="text-xs text-green-400 bg-green-600/10 rounded px-3 py-2">{successMsg}</div>}
+
+              {/* Chat / Script LLM */}
+              <section className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-gray-300">脚本生成 API · Chat LLM</span>
+                  <ConfiguredBadge configured={status?.chat.configured ?? false} />
+                  <SourceBadge source={status?.chat.source ?? "missing"} />
+                </div>
+                <label className="block">
+                  <span className="text-[10px] text-gray-500">Base URL</span>
+                  <input type="text" value={chatBaseUrl} onChange={(e) => setChatBaseUrl(e.target.value)}
+                    placeholder="https://www.packyapi.com/v1"
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-gray-500">Model</span>
+                  <input type="text" value={chatModel} onChange={(e) => setChatModel(e.target.value)}
+                    placeholder="gpt-5.4"
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
+                </label>
+                <label className="block">
+                  <span className="text-[10px] text-gray-500">API Key</span>
+                  <input type="password" value={chatKey} onChange={(e) => setChatKey(e.target.value)}
+                    placeholder={status?.chat.configured ? "已配置，留空则不修改" : "请输入 API Key"}
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
+                </label>
+                {status?.chat.configured && (
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input type="checkbox" checked={clearChatKey} onChange={(e) => setClearChatKey(e.target.checked)} className="accent-red-600" />
+                    <span className="text-[10px] text-gray-500">清除已保存的密钥</span>
+                  </label>
+                )}
+                <p className="text-[10px] text-gray-600">支持 OpenAI 兼容接口（/v1/chat/completions），可接入 Packy、RunningHub LLM、Qwen 等。</p>
+              </section>
+
+              <hr className="border-gray-700" />
 
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
@@ -187,6 +233,9 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
 
               {checkResult && (
                 <div className="space-y-1">
+                  <p className={`text-xs ${checkResult.chat.configured ? "text-green-400" : "text-red-400"}`}>
+                    Chat LLM: {checkResult.chat.message}
+                  </p>
                   <p className={`text-xs ${checkResult.packy.configured ? "text-green-400" : "text-red-400"}`}>
                     Packy: {checkResult.packy.message}
                   </p>

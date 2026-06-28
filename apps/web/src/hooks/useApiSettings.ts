@@ -6,6 +6,13 @@ import { useCallback } from "react";
 import { useApi } from "./useApi";
 
 export interface ApiSettingsStatus {
+  chat: {
+    configured: boolean;
+    source: "stored" | "env" | "missing";
+    maskedKey: string | null;
+    baseUrl: string;
+    model: string;
+  };
   packy: {
     configured: boolean;
     source: "stored" | "env" | "missing";
@@ -24,6 +31,13 @@ export interface ApiSettingsStatus {
 }
 
 export interface UpdateApiSettingsInput {
+  chat?: {
+    enabled?: boolean;
+    baseUrl?: string;
+    model?: string;
+    apiKey?: string;
+    clearApiKey?: boolean;
+  };
   packy?: {
     enabled?: boolean;
     baseUrl?: string;
@@ -42,6 +56,7 @@ export interface UpdateApiSettingsInput {
 }
 
 export interface ApiSettingsCheckResult {
+  chat: { configured: boolean; message: string };
   packy: { configured: boolean; message: string };
   runninghub: { configured: boolean; message: string };
 }
