@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta content="default-src 'none'; style-src * 'unsafe-inline'; script-src * 'unsafe-inline'; img-src * data: blob: http://localhost:3001; font-src * data:; media-src * data: blob: http://localhost:3001; connect-src http://localhost:3001; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'" http-equiv="Content-Security-Policy"/>
+<meta content="default-src 'none'; style-src 'unsafe-inline' https://cdnjs.cloudflare.com; script-src 'unsafe-inline' https://cdn.tailwindcss.com https://cdnjs.cloudflare.com; img-src * data: blob: http://localhost:3001; font-src https://cdnjs.cloudflare.com data:; media-src * data: blob: http://localhost:3001; connect-src http://localhost:3001; form-action 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'" http-equiv="Content-Security-Policy"/>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>AI Video Canvas - Local Workspace</title>
-<!-- Tailwind CSS -->
-<script src="https://image.uc.cn/s/uae/g/3n/mos-production/0915/3.4.17.js"></script>
+<!-- Tailwind CSS Play CDN -->
+<script src="https://cdn.tailwindcss.com"></script>
 <!-- Font Awesome -->
-<script src="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/js/all.min.js"></script>
-<link href="https://image.uc.cn/s/uae/g/3n/mos-production/fontawesome-free-7.1.0-web/css/fontawesome.min.css" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/js/all.min.js" integrity="sha384-GLz+4C4Q/zJF5GjG4n3FFR5GEXXoazd7fuN2aJEwU0p/r4DZf7R8Sv1q3RVZZ6k" crossorigin="anonymous"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" rel="stylesheet" integrity="sha384-D76A+5Px3cTj9G1B5c0a0JN4JFK2Y36J/ub4mW4vU7N4WfzYPjeDtiMpNUI+XYP" crossorigin="anonymous"/>
 <style>
     /* Custom Scrollbar */
     ::-webkit-scrollbar { width: 8px; height: 8px; }
@@ -596,7 +596,7 @@ async function sendMessage() {
     els.sendBtn.disabled = true;
     els.chatInput.disabled = true;
 
-    addChatMessage('ai', '<i class="fa-solid fa-spinner fa-spin mr-2"></i>Generating script...');
+    addChatMessage('ai', '⏳ Generating script, please wait...');
 
     try {
         const data = await apiPost('/projects/' + state.currentProject.id + '/chat', { message: text });
@@ -605,7 +605,7 @@ async function sendMessage() {
         state.chatMessages.pop();
         rerenderChat();
 
-        addChatMessage('ai', 'Generated script "<b>' + escapeHtml(data.title) + '</b>" with <b>' + data.sceneCount + '</b> shots.');
+        addChatMessage('ai', 'Generated script "' + escapeHtml(data.title) + '" with ' + data.sceneCount + ' shots.');
 
         // Update scenes
         state.scenes = data.scenes;
@@ -662,7 +662,7 @@ function renderChatMessage(role, text) {
                 <span class="text-[10px] text-rose-400 font-bold">!</span>
             </div>
             <div class="bg-rose-600/10 p-3 rounded-lg rounded-tl-none text-sm text-rose-300 border border-rose-500/10 flex-1">
-                ${text}
+                ${escapeHtml(text)}
             </div>`;
     } else {
         div.innerHTML = `
@@ -670,7 +670,7 @@ function renderChatMessage(role, text) {
                 <i class="fa-solid fa-robot text-blue-400 text-xs"></i>
             </div>
             <div class="bg-gray-700 p-3 rounded-lg rounded-tl-none text-sm text-gray-200 shadow-sm flex-1">
-                ${text}
+                ${escapeHtml(text)}
             </div>`;
     }
     els.chatContainer.appendChild(div);
