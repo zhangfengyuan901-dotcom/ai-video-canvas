@@ -186,22 +186,29 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
 
               <section className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-gray-300">图片生成 API · Packy</span>
+                  <span className="text-xs font-medium text-gray-300">图片生成 API · Packy (gpt-image-2)</span>
                   <ConfiguredBadge configured={status?.packy.configured ?? false} />
                   <SourceBadge source={status?.packy.source ?? "missing"} />
                 </div>
+                <p className="text-[10px] text-gray-600 leading-relaxed">
+                  API Key 需归属 <b className="text-gray-400">Sora 分组</b>。
+                  文生图：<code className="text-blue-400">POST {packyBaseUrl || 'https://www.packyapi.com/v1'}/images/generations</code>，
+                  图生图：<code className="text-purple-400">POST /images/edits</code>
+                </p>
                 <label className="block">
-                  <span className="text-[10px] text-gray-500">Base URL</span>
+                  <span className="text-[10px] text-gray-500">Base URL（不含路径尾缀）</span>
                   <input type="text" value={packyBaseUrl} onChange={(e) => setPackyBaseUrl(e.target.value)}
-                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-600" />
+                    placeholder="https://www.packyapi.com/v1"
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] text-gray-500">Image Model</span>
+                  <span className="text-[10px] text-gray-500">Image Model（固定为 gpt-image-2）</span>
                   <input type="text" value={packyModel} onChange={(e) => setPackyModel(e.target.value)}
-                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 focus:outline-none focus:border-blue-600" />
+                    placeholder="gpt-image-2"
+                    className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
                 </label>
                 <label className="block">
-                  <span className="text-[10px] text-gray-500">API Key</span>
+                  <span className="text-[10px] text-gray-500">API Key（Sora 分组）</span>
                   <input type="password" value={packyKey} onChange={(e) => setPackyKey(e.target.value)}
                     placeholder={status?.packy.configured ? "已配置，留空则不修改" : "请输入 API Key"}
                     className="w-full mt-0.5 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-200 placeholder-gray-500 focus:outline-none focus:border-blue-600" />
