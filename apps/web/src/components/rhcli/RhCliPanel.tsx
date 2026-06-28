@@ -1,34 +1,20 @@
 // =========================================================================
-// RhCliPanel — RunningHub CLI 面板：余额、模型浏览、快捷生成
+// RhCliPanel — RunningHub 高级面板：余额、模型浏览、快捷生成
+// 模型列表从后端 GET /api/rhcli/models 动态获取，不再硬编码
 // =========================================================================
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRhCli, type RhCheckData, type RhModel } from "../../hooks/useRhCli";
 import { Coins, Image, Video, Sparkles, AlertCircle, Check, Loader2, Play } from "lucide-react";
 
-const IMAGE_MODELS: { name: string; desc: string }[] = [
-  { name: "全能图片PRO", desc: "默认推荐，综合效果最好" },
-  { name: "全能图片V2", desc: "最快最便宜" },
-  { name: "悠船 v7", desc: "Midjourney 风格" },
-  { name: "GPT Image 2", desc: "语义理解强" },
-  { name: "Seedream v5", desc: "写实照片感" },
-];
-
-const VIDEO_MODELS: { name: string; desc: string; num: string }[] = [
-  { name: "全能视频V3.1 Fast", desc: "性价比之王（推荐）", num: "1" },
-  { name: "全能视频X", desc: "Grok 驱动，想象力超强", num: "2" },
-  { name: "可灵 v3.0 Pro", desc: "运动自然，拍人物首选", num: "3" },
-  { name: "全能视频V3.1 Pro", desc: "电影感拉满", num: "4" },
-  { name: "Vidu Q3 Pro", desc: "风格化独特", num: "5" },
-  { name: "全能视频S", desc: "Sora 同款引擎", num: "6" },
-  { name: "海螺 Hailuo", desc: "速度快、画面细腻", num: "7" },
-  { name: "Seedance 2.0", desc: "最长15秒+配音，最高4K", num: "8" },
-];
-
 export default function RhCliPanel() {
-  const { checkBalance, generateImage, generateVideo } = useRhCli();
+  const { checkBalance, listModels, generateImage, generateVideo } = useRhCli();
+
   const [check, setCheck] = useState<RhCheckData | null>(null);
   const [checkLoading, setCheckLoading] = useState(false);
+
+  const [imageModels, setImageModels] = useState<RhModel[]>([]);
+  const [videoModels, setVideoModels] = useState<RhModel[]>([]);
 
   const [imgPrompt, setImgPrompt] = useState("");
   const [imgModel, setImgModel] = useState("1");
@@ -44,18 +30,24 @@ export default function RhCliPanel() {
 
   const [activeTab, setActiveTab] = useState<"image" | "video">("image");
 
-  useEffect(() => { handleCheck(); }, []);
+  useEffect(() => { handleCheck(); loadModels(); }, []);
 
   async function handleCheck() {
     setCheckLoading(true);
+    try { setCheck(await checkBalance()); }
+    catch { setCheck({ available: false, hint: "Backend request failed" }); }
+    finally { setCheckLoading(false); }
+  }
+
+  async function loadModels() {
     try {
-      const data = await checkBalance();
-      setCheck(data);
-    } catch {
-      setCheck({ available: false, hint: "Backend request failed" });
-    } finally {
-      setCheckLoading(false);
-    }
+      const img = await listModels("image");
+      if (img.models) setImageModels(img.models);
+    } catch { /* keep defaults */ }
+    try {
+      const vid = await listModels("video");
+      if (vid.models) setVideoModels(vid.models);
+    } catch { /* keep defaults */ }
   }
 
   async function handleGenerateImage() {
@@ -63,10 +55,14 @@ export default function RhCliPanel() {
     setImgLoading(true); setImgError(null); setImgResult(null);
     try {
       const r = await generateImage(imgPrompt.trim(), imgModel);
-      if (r.error) { setImgError(r.error); }
-      else if (r.files && r.files.length > 0) {
-        setImgResult(`Generated: ${r.files[0]} (cost ¥${r.cost ?? "?"}, ${r.duration ?? "?"}s)`);
-      } else { setImgResult("Done — no output files"); }
+      setImgResult(
+        r.error
+          ? `Error: ${r.error}`
+          : r.files && r.files.length > 0
+            ? `Generated: ${r.files[0]} (cost ¥${r.cost ?? "?"}, ${r.duration ?? "?"}s)`
+            : "Done — no output files",
+      );
+      if (r.error) setImgError(r.error);
     } catch (e) { setImgError(e instanceof Error ? e.message : "Failed"); }
     finally { setImgLoading(false); }
   }
@@ -76,13 +72,20 @@ export default function RhCliPanel() {
     setVidLoading(true); setVidError(null); setVidResult(null);
     try {
       const r = await generateVideo(vidPrompt.trim(), vidModel);
-      if (r.error) { setVidError(r.error); }
-      else if (r.files && r.files.length > 0) {
-        setVidResult(`Generated: ${r.files[0]} (cost ¥${r.cost ?? "?"}, ${r.duration ?? "?"}s)`);
-      } else { setVidResult("Done — no output files"); }
+      setVidResult(
+        r.error
+          ? `Error: ${r.error}`
+          : r.files && r.files.length > 0
+            ? `Generated: ${r.files[0]} (cost ¥${r.cost ?? "?"}, ${r.duration ?? "?"}s)`
+            : "Done — no output files",
+      );
+      if (r.error) setVidError(r.error);
     } catch (e) { setVidError(e instanceof Error ? e.message : "Failed"); }
     finally { setVidLoading(false); }
   }
+
+  const imgOpts = imageModels.length > 0 ? imageModels : [];
+  const vidOpts = videoModels.length > 0 ? videoModels : [];
 
   return (
     <div className="space-y-4">
@@ -104,7 +107,7 @@ export default function RhCliPanel() {
         ) : !check.available ? (
           <div className="text-[11px] text-amber-400 bg-amber-600/10 rounded px-2 py-1.5">
             <AlertCircle className="h-3 w-3 inline mr-1" />
-            {check.hint || "RH CLI not available"}
+            {check.hint || "RunningHub API key not configured"}
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-2 text-[11px]">
@@ -140,9 +143,9 @@ export default function RhCliPanel() {
             <div className="flex gap-2">
               <select value={imgModel} onChange={(e) => setImgModel(e.target.value)}
                 className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500">
-                {IMAGE_MODELS.map((m, i) => (
-                  <option key={i} value={String(i + 1)}>{m.name} — {m.desc}</option>
-                ))}
+                {imgOpts.length > 0 ? imgOpts.map((m) => (
+                  <option key={m.id ?? m.name} value={m.id ?? m.name}>{m.name} — {m.desc}</option>
+                )) : <option value="1">Default model</option>}
               </select>
               <button onClick={handleGenerateImage} disabled={imgLoading || !imgPrompt.trim() || !check?.available}
                 className="px-3 py-1 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white transition disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1">
@@ -151,7 +154,7 @@ export default function RhCliPanel() {
               </button>
             </div>
             {imgError && <p className="text-[10px] text-red-400">{imgError}</p>}
-            {imgResult && <p className="text-[10px] text-green-400"><Check className="h-3 w-3 inline mr-1" />{imgResult}</p>}
+            {imgResult && !imgError && <p className="text-[10px] text-green-400"><Check className="h-3 w-3 inline mr-1" />{imgResult}</p>}
           </div>
         ) : (
           <div className="space-y-2">
@@ -162,9 +165,9 @@ export default function RhCliPanel() {
             <div className="flex gap-2">
               <select value={vidModel} onChange={(e) => setVidModel(e.target.value)}
                 className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-purple-500">
-                {VIDEO_MODELS.map((m) => (
-                  <option key={m.num} value={m.num}>{m.name} — {m.desc}</option>
-                ))}
+                {vidOpts.length > 0 ? vidOpts.map((m) => (
+                  <option key={m.id ?? m.name} value={m.id ?? m.name}>{m.name} — {m.desc}</option>
+                )) : <option value="1">Default model</option>}
               </select>
               <button onClick={handleGenerateVideo} disabled={vidLoading || !vidPrompt.trim() || !check?.available}
                 className="px-3 py-1 rounded text-xs font-medium bg-purple-600 hover:bg-purple-500 text-white transition disabled:opacity-50 disabled:pointer-events-none flex items-center gap-1">
@@ -173,7 +176,7 @@ export default function RhCliPanel() {
               </button>
             </div>
             {vidError && <p className="text-[10px] text-red-400">{vidError}</p>}
-            {vidResult && <p className="text-[10px] text-green-400"><Check className="h-3 w-3 inline mr-1" />{vidResult}</p>}
+            {vidResult && !vidError && <p className="text-[10px] text-green-400"><Check className="h-3 w-3 inline mr-1" />{vidResult}</p>}
           </div>
         )}
       </div>
@@ -181,14 +184,13 @@ export default function RhCliPanel() {
       {/* ---- Model List ---- */}
       <div className="rounded-lg border border-gray-700 bg-gray-800/50 p-3">
         <h4 className="text-[11px] font-medium text-gray-400 mb-2 flex items-center gap-1">
-          <Sparkles className="h-3 w-3" /> Available Models (via rh CLI)
+          <Sparkles className="h-3 w-3" /> Available Models (via RunningHub API)
         </h4>
-
         <div className="space-y-2">
           <div>
-            <p className="text-[10px] text-gray-500 mb-1">Image Models (5)</p>
+            <p className="text-[10px] text-gray-500 mb-1">Image Models ({imgOpts.length})</p>
             <div className="grid grid-cols-2 gap-1">
-              {IMAGE_MODELS.map((m, i) => (
+              {imgOpts.map((m, i) => (
                 <div key={i} className="text-[10px] text-gray-400 bg-gray-900/50 rounded px-2 py-1">
                   <span className="text-gray-300 font-medium">{m.name}</span>
                   <span className="text-gray-600 ml-1">— {m.desc}</span>
@@ -197,10 +199,10 @@ export default function RhCliPanel() {
             </div>
           </div>
           <div>
-            <p className="text-[10px] text-gray-500 mb-1">Video Models (8)</p>
+            <p className="text-[10px] text-gray-500 mb-1">Video Models ({vidOpts.length})</p>
             <div className="grid grid-cols-2 gap-1">
-              {VIDEO_MODELS.map((m) => (
-                <div key={m.num} className="text-[10px] text-gray-400 bg-gray-900/50 rounded px-2 py-1">
+              {vidOpts.map((m, i) => (
+                <div key={i} className="text-[10px] text-gray-400 bg-gray-900/50 rounded px-2 py-1">
                   <span className="text-gray-300 font-medium">{m.name}</span>
                   <span className="text-gray-600 ml-1">— {m.desc}</span>
                 </div>

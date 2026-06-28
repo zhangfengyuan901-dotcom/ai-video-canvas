@@ -18,12 +18,14 @@ export interface RhCheckData {
 }
 
 export interface RhModel {
+  id?: string;
+  name?: string;
   endpoint?: string;
   endpointName?: string;
-  name?: string;
+  desc?: string;
+  description?: string;
   type?: string;
   task?: string;
-  description?: string;
 }
 
 export interface RhModelsData {
