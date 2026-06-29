@@ -14,7 +14,7 @@ import SceneList from "../scene/SceneList";
 import ProjectProgressPanel from "../project/ProjectProgressPanel";
 import ScriptInputPanel from "../script/ScriptInputPanel";
 import ScriptPreviewPanel from "../script/ScriptPreviewPanel";
-import CanvasViewport, { CanvasViewportEmpty } from "./CanvasViewport";
+import CanvasViewport from "./CanvasViewport";
 import ShotEditor from "../scene/ShotEditor";
 import type { Project } from "@ai-video-canvas/shared";
 
