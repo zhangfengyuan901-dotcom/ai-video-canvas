@@ -114,8 +114,8 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
-      <div className="fixed inset-y-0 right-0 w-[460px] bg-gray-900 border-l border-gray-700 shadow-xl z-50 flex flex-col">
+      <div className="fixed inset-0 bg-black/60 z-[60]" onClick={onClose} />
+      <div className="fixed inset-y-0 right-0 w-[460px] bg-gray-900 border-l border-gray-700 shadow-2xl z-[70] flex flex-col">
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700 shrink-0">
           <h2 className="text-sm font-semibold text-gray-200">API 配置</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-300 text-lg leading-none">&times;</button>
@@ -135,6 +135,12 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
                   <span className="text-xs font-medium text-gray-300">脚本生成 API · Chat LLM</span>
                   <ConfiguredBadge configured={status?.chat.configured ?? false} />
                   <SourceBadge source={status?.chat.source ?? "missing"} />
+                  <div className="flex-1" />
+                  <button onClick={handleSave} disabled={saving}
+                    className="text-[10px] px-2 py-0.5 rounded bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 transition disabled:opacity-50"
+                    title="保存全部配置">
+                    {saving ? "..." : "保存"}
+                  </button>
                 </div>
                 <label className="block">
                   <span className="text-[10px] text-gray-500">Base URL</span>
@@ -189,6 +195,12 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
                   <span className="text-xs font-medium text-gray-300">图片生成 API · Packy (gpt-image-2)</span>
                   <ConfiguredBadge configured={status?.packy.configured ?? false} />
                   <SourceBadge source={status?.packy.source ?? "missing"} />
+                  <div className="flex-1" />
+                  <button onClick={handleSave} disabled={saving}
+                    className="text-[10px] px-2 py-0.5 rounded bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 transition disabled:opacity-50"
+                    title="保存全部配置">
+                    {saving ? "..." : "保存"}
+                  </button>
                 </div>
                 <p className="text-[10px] text-gray-600 leading-relaxed">
                   API Key 需归属 <b className="text-gray-400">Sora 分组</b>。
@@ -228,6 +240,12 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
                   <span className="text-xs font-medium text-gray-300">视频生成 API · RunningHub</span>
                   <ConfiguredBadge configured={status?.runninghub.configured ?? false} />
                   <SourceBadge source={status?.runninghub.source ?? "missing"} />
+                  <div className="flex-1" />
+                  <button onClick={handleSave} disabled={saving}
+                    className="text-[10px] px-2 py-0.5 rounded bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 transition disabled:opacity-50"
+                    title="保存全部配置">
+                    {saving ? "..." : "保存"}
+                  </button>
                 </div>
                 <label className="block">
                   <span className="text-[10px] text-gray-500">API Key</span>
@@ -280,13 +298,18 @@ export default function ApiSettingsPanel({ onClose }: ApiSettingsPanelProps) {
           )}
         </div>
 
-        <div className="border-t border-gray-700 px-5 py-3 flex items-center gap-2 shrink-0">
-          <button onClick={handleReload} className="text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">重新读取</button>
-          <button onClick={handleCheck} className="text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors">自检</button>
+        <div className="sticky bottom-0 border-t border-gray-700 bg-gray-900/95 backdrop-blur-sm px-5 py-3 flex items-center gap-2 shrink-0">
+          <button onClick={handleReload} className="text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors" title="重新读取已保存的配置">
+            <i className="fa-solid fa-rotate-right mr-1" />重新读取
+          </button>
+          <button onClick={handleCheck} className="text-xs px-3 py-1.5 rounded bg-gray-700 hover:bg-gray-600 text-gray-300 transition-colors" title="检查 API 连通性">
+            <i className="fa-solid fa-check-circle mr-1" />自检
+          </button>
           <div className="flex-1" />
+          <span className="text-[10px] text-gray-500">保存全部配置</span>
           <button onClick={handleSave} disabled={saving}
-            className="text-xs px-4 py-1.5 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white disabled:bg-gray-600 disabled:text-gray-500">
-            {saving ? "保存中..." : "保存配置"}
+            className="text-xs px-5 py-2 rounded-lg font-semibold transition-all bg-gradient-to-b from-blue-500 to-blue-600 hover:from-blue-400 hover:to-blue-500 active:from-blue-600 active:to-blue-700 text-white shadow-sm shadow-blue-500/20 disabled:bg-gray-600 disabled:from-gray-600 disabled:to-gray-600 disabled:text-gray-500 disabled:shadow-none">
+            {saving ? "保存中..." : "保存全部"}
           </button>
         </div>
       </div>
