@@ -5,6 +5,8 @@
 
 import { v4 as uuid } from "uuid";
 import { eq } from "drizzle-orm";
+import { existsSync, mkdirSync, copyFileSync } from "node:fs";
+import { resolve, basename } from "node:path";
 import { db } from "../../db/index.js";
 import { projects, scenes, storyboardPanels } from "../../db/schema.js";
 import { generatePanelPrompts } from "../llm/PanelPromptService.js";
@@ -13,6 +15,32 @@ import { getPanelPath } from "../storage/AssetStorageService.js";
 import { composeStoryboardStrip } from "../storage/StripService.js";
 import { getJob, markRunning, markProgress, markSuccess, markFailed, type JobRow } from "./JobService.js";
 import type { StyleBible } from "@ai-video-canvas/shared";
+
+// ---- 可读目录辅助 ---------------------------------------------------------
+
+const REPO_ROOT = resolve(import.meta.dirname, "../../../../../");
+const PROJECTS_DIR = resolve(REPO_ROOT, "local-data", "projects");
+
+function ensureReadableCopy(
+  projectTitle: string,
+  sceneOrder: number,
+  panelIndex: number,
+  sourcePath: string,
+): string | null {
+  try {
+    const safeTitle = projectTitle.replace(/[<>:"/\\|?*]/g, "_").slice(0, 50);
+    const dir = resolve(PROJECTS_DIR, safeTitle, `故事板${sceneOrder}`);
+    mkdirSync(dir, { recursive: true });
+    const ext = sourcePath.match(/\.(png|jpg|jpeg|webp)/i)?.[0] ?? ".png";
+    const dest = resolve(dir, `panel_${panelIndex}${ext}`);
+    copyFileSync(sourcePath, dest);
+    console.log(`[StoryboardWorker] 已保存可读副本: ${dest}`);
+    return dest;
+  } catch (err) {
+    console.warn("[StoryboardWorker] 保存可读副本失败:", err);
+    return null;
+  }
+}
 
 export async function runStoryboardJob(
   jobId: string,
@@ -110,13 +138,30 @@ export async function runStoryboardJob(
           markProgress(jobId, Math.round(baseProgress + progressPerScene * panelProgress[p.panelIndex]));
 
           try {
-            const result = await generateAndDownload(p.prompt, localPath, aspectRatio);
+            const panelProgressMsg = (msg: string) => {
+              db.update(storyboardPanels).set({
+                error: `[生成中] ${msg}`, updatedAt: new Date().toISOString(),
+              }).where(eq(storyboardPanels.id, panelId)).run();
+            };
+
+            const result = await generateAndDownload(p.prompt, localPath, aspectRatio, panelProgressMsg);
             db.update(storyboardPanels).set({
               status: "ready",
               revisedPrompt: result.revisedPrompt ?? null,
               remoteUrl: result.remoteUrl,
+              error: null,
               updatedAt: new Date().toISOString(),
             }).where(eq(storyboardPanels.id, panelId)).run();
+
+            // Save readable copy to 项目名/故事板N/
+            if (existsSync(localPath)) {
+              ensureReadableCopy(
+                project.title,
+                scene.order,
+                p.panelIndex,
+                localPath,
+              );
+            }
           } catch (imgErr) {
             const msg = imgErr instanceof Error ? imgErr.message : "Image generation failed";
             db.update(storyboardPanels).set({

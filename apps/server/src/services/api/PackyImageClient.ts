@@ -90,6 +90,7 @@ export async function generateAndDownload(
   prompt: string,
   localPath: string,
   aspectRatio: "16:9" | "9:16" = "16:9",
+  onProgress?: (msg: string) => void,
 ): Promise<GenerationResult> {
   // Try Packy first
   try {
@@ -99,6 +100,7 @@ export async function generateAndDownload(
   } catch (packyErr) {
     const msg = packyErr instanceof Error ? packyErr.message : "";
     console.warn("[PackyImageClient] Packy failed, falling back to RunningHub:", msg.slice(0, 120));
+    onProgress?.("Packy unavailable, switching to RunningHub...");
 
     // Fallback to RunningHub image generation
     try {
@@ -107,8 +109,10 @@ export async function generateAndDownload(
         throw new Error("RunningHub API key not configured for image fallback");
       }
 
+      onProgress?.("RunningHub: submitting image task...");
       const result = await runImage(prompt, "1"); // Use model 1 (全能图片PRO)
       if (result.files && result.files.length > 0) {
+        onProgress?.("RunningHub: downloading...");
         // Copy the generated file to the expected localPath
         copyFileSync(result.files[0], localPath);
         return { remoteUrl: `runninghub:${result.taskId}`, revisedPrompt: undefined };
