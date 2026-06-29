@@ -35,25 +35,52 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
     }
   }, [currentProject?.id, sceneId]);
 
-  // Restore running job on page refresh
+  // Restore running job + auto-refresh panels during generation
   useEffect(() => {
     if (!currentProject) return;
-    (async () => {
+    let cancelled = false;
+
+    async function check() {
       try {
-        const jobs = await get<any[]>(`/projects/${currentProject.id}/jobs`);
+        // Find any running storyboard job
+        const jobs = await get<any[]>(`/projects/${currentProject!.id}/jobs`);
         const runningJob = jobs.find(
           (j) => j.type === "STORYBOARD_GENERATE" && (j.status === "queued" || j.status === "running"),
         );
-        if (runningJob && runningJob.id !== jobId) {
-          setJobId(runningJob.id);
+        if (runningJob) {
+          if (runningJob.id !== jobId) {
+            setJobId(runningJob.id);
+            useProjectStore.getState().setGeneratingStoryboard(true);
+          }
           setJobProgress(runningJob.progress ?? 0);
-          useProjectStore.getState().setGeneratingStoryboard(true);
+        } else if (isGeneratingGlob) {
+          // No running job found but store thinks it's generating — clear it
+          useProjectStore.getState().setGeneratingStoryboard(false);
+          setJobId(null);
         }
-      } catch {
-        // silent
-      }
-    })();
-  }, [currentProject?.id]);
+
+        // Always refresh panels to catch updates (e.g. RunningHub fallback progress)
+        if (!cancelled) {
+          await loadPanelsSilent();
+        }
+      } catch { /* silent */ }
+    }
+
+    check(); // Run immediately
+    const interval = setInterval(check, 3000); // Poll every 3s
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [currentProject?.id, sceneId]);
+
+  // Silent panel loader — doesn't set generating flags
+  async function loadPanelsSilent() {
+    if (!currentProject) return;
+    try {
+      const data = await get<StoryboardPanel[]>(
+        `/projects/${currentProject.id}/scenes/${sceneId}/panels`,
+      );
+      setPanels(sceneId, data);
+    } catch { /* silent */ }
+  }
 
   // Poll job status when a job is running
   useEffect(() => {
@@ -167,8 +194,8 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
         <span className="text-xs font-medium text-gray-400 tracking-wide">三图素材</span>
         {currentProject && (
           <button
-            onClick={loadPanels}
-            className="inline-flex items-center gap-1 rounded-lg border border-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-500 transition-all hover:bg-gray-700 hover:text-gray-300"
+            onClick={async () => { await loadPanelsSilent(); }}
+            className="inline-flex items-center gap-1 rounded-lg border border-gray-700 px-1.5 py-0.5 text-[10px] font-medium text-gray-400 transition-all hover:bg-gray-600 hover:text-gray-200 active:bg-gray-700"
           >
             <RefreshCw className="h-3 w-3" />
             刷新
@@ -207,8 +234,18 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
                   loading="lazy"
                 />
               ) : panel?.status === "generating" ? (
-                <div className="h-full flex items-center justify-center">
+                <div className="h-full flex flex-col items-center justify-center gap-1 px-2">
                   <StatusBadge status="running" label="生成中..." pulse />
+                  {panel.error && (
+                    <p className="text-[8px] text-blue-400 text-center leading-tight line-clamp-2">
+                      {panel.error.replace(/^\[生成中\]\s*/, "")}
+                    </p>
+                  )}
+                  {jobProgress > 0 && (
+                    <div className="w-16 h-1 bg-gray-700 rounded-full mt-1">
+                      <div className="h-1 bg-blue-500 rounded-full transition-all" style={{ width: `${jobProgress}%` }} />
+                    </div>
+                  )}
                 </div>
               ) : panel?.status === "failed" ? (
                 <div className="h-full flex items-center justify-center p-3">
@@ -220,10 +257,15 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
                   </div>
                 </div>
               ) : (
-                <div className="h-full flex items-center justify-center">
+                <div className="h-full flex flex-col items-center justify-center gap-1">
                   <span className="text-[10px] text-gray-500">
-                    {isGeneratingGlob ? "生成中..." : "点击生成"}
+                    {isGeneratingGlob ? "排队中..." : "点击生成"}
                   </span>
+                  {isGeneratingGlob && jobProgress > 0 && (
+                    <div className="w-12 h-0.5 bg-gray-700 rounded-full">
+                      <div className="h-0.5 bg-blue-500 rounded-full transition-all" style={{ width: `${jobProgress}%` }} />
+                    </div>
+                  )}
                 </div>
               )}
 
