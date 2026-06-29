@@ -305,41 +305,47 @@ export default function PanelGrid({ sceneId }: PanelGridProps) {
         })}
       </div>
 
-      {/* Storyboard Review Controls */}
-      {panels.filter(p => p.status === "ready" && p.localPath).length === 3 && currentProject && (
+      {/* Storyboard Review Controls — 三张全部 ready 时才显示审核通过，否则只显示驳回 */}
+      {currentProject && panels.length > 0 && (
         <div className="flex items-center gap-2 pt-1">
           <span className="text-[10px] text-gray-500">故事板审核：</span>
-          <button
-            onClick={async (e) => {
-              e.stopPropagation();
-              try {
-                await patch(`/projects/${currentProject.id}/scenes/${sceneId}/storyboard-review`, { status: "approved" });
-                await loadPanels();
-                if (currentProject) {
-                  const scenes = await get<Scene[]>(`/projects/${currentProject.id}/scenes`);
-                  useProjectStore.getState().setScenes(scenes);
+          {panels.filter(p => p.status === "ready" && p.localPath).length === 3 ? (
+            <button
+              onClick={async (e) => {
+                e.stopPropagation();
+                try {
+                  await patch(`/projects/${currentProject.id}/scenes/${sceneId}/storyboard-review`, { status: "approved" });
+                  await loadPanels();
+                  const scs = await get<Scene[]>(`/projects/${currentProject.id}/scenes`);
+                  useProjectStore.getState().setScenes(scs);
+                  window.dispatchEvent(new CustomEvent('toast', { detail: { message: '故事板审核已通过', type: 'success' } }));
+                } catch (err) {
+                  const msg = err instanceof Error ? err.message : "审核失败";
+                  window.dispatchEvent(new CustomEvent('toast', { detail: { message: msg, type: 'error' } }));
                 }
-              } catch (err) {
-                console.error("Storyboard approve failed:", err);
-              }
-            }}
-            className="inline-flex items-center gap-1 rounded-md bg-emerald-600/80 hover:bg-emerald-600 text-white px-2 py-1 text-[10px] font-medium transition-colors"
-          >
-            <Check className="h-3 w-3" />
-            审核通过
-          </button>
+              }}
+              className="inline-flex items-center gap-1 rounded-md bg-emerald-600/80 hover:bg-emerald-600 text-white px-2 py-1 text-[10px] font-medium transition-colors"
+            >
+              <Check className="h-3 w-3" />
+              审核通过
+            </button>
+          ) : (
+            <span className="text-[10px] text-gray-600">
+              {panels.some(p => p.status === "generating") ? "图片生成中，完成后可审核..." : "三张图片未全部就绪"}
+            </span>
+          )}
           <button
             onClick={async (e) => {
               e.stopPropagation();
               try {
                 await patch(`/projects/${currentProject.id}/scenes/${sceneId}/storyboard-review`, { status: "rejected", note: "用户驳回" });
                 await loadPanels();
-                if (currentProject) {
-                  const scenes = await get<Scene[]>(`/projects/${currentProject.id}/scenes`);
-                  useProjectStore.getState().setScenes(scenes);
-                }
+                const scs = await get<Scene[]>(`/projects/${currentProject.id}/scenes`);
+                useProjectStore.getState().setScenes(scs);
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: '故事板已驳回', type: 'info' } }));
               } catch (err) {
-                console.error("Storyboard reject failed:", err);
+                const msg = err instanceof Error ? err.message : "驳回失败";
+                window.dispatchEvent(new CustomEvent('toast', { detail: { message: msg, type: 'error' } }));
               }
             }}
             className="inline-flex items-center gap-1 rounded-md bg-rose-600/80 hover:bg-rose-600 text-white px-2 py-1 text-[10px] font-medium transition-colors"
